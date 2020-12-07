@@ -64,6 +64,7 @@ class ConvChain(nn.Module):
             padding = 0
 
         layers = []
+        # layers.append(nn.RNN(ninputs, width, batch_first=True))
         for d in range(depth-1):
             if d == 0:
                 _in = ninputs
@@ -191,7 +192,9 @@ class ConvChain(nn.Module):
             out = self.layer(x)
             return out
 
-
+"""
+    Aan de encode part van deze autoencoder RNN toevoegen rond de convolution stap
+"""
 class Autoencoder(nn.Module):
     """A U-net style autoencoder.
 

@@ -186,3 +186,22 @@ class Plane(TriangleMesh):
             [2, 3, 0],
         ])
         super(Plane, self).__init__(idx, pts)
+
+class GoodPlane(TriangleMesh):
+    """A 1-square YZ-plane centered at the origin.
+    Args:
+        scale(float): scale factor
+    """
+
+    def __init__(self, scale=1):
+        pts = scale*np.array([
+            [-0.5, 0.0, -0.5],
+            [-0.5, 0.0, 0.5],
+            [0.5, 0.0, 0.5],
+            [0.5, 0.0, -0.5]
+        ])
+        idx = np.array([
+            [0, 1, 2],
+            [2, 3, 0],
+        ])
+        super(GoodPlane, self).__init__(idx, pts)

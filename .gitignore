@@ -15,3 +15,7 @@ sbmc.egg-info/
 build
 sbmc/halide_ops.cpython-37m-darwin.so
 dist
+
+halide/
+
+pbrt/

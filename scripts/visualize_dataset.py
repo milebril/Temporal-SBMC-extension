@@ -25,7 +25,7 @@ from torch.utils.data import DataLoader
 import ttools
 import skimage.io as skio
 
-from sbmc.datasets import FullImagesDataset
+from sbmc.datasets import FullImagesDataset, TilesDataset
 
 
 LOG = ttools.get_logger(__name__)
@@ -39,6 +39,7 @@ def _save(output, imname, imdata, dtype=np.uint8):
 
 def main(args):
     data = FullImagesDataset(args.data_dir, spp=args.spp)
+    # data = TilesDataset(args.data_dir, spp=args.spp)
 
     dataloader = DataLoader(data, batch_size=1, shuffle=False, num_workers=4)
 
@@ -46,9 +47,11 @@ def main(args):
              data.spp, data.gt_sample_count)
     for idx, sample in enumerate(dataloader):
         LOG.info("Processing data sample %d", idx)
-        im = sample["target_image"]
-        LOG.info("  target radiance: %.2f -- %.2f", im.min().item(), im.max().item())
-        _save(args.output, "%04d_reference.png" % idx, im)
+        ref = sample["target_image"]
+        low_spp = sample["low_spp"]
+        # LOG.info("  target radiance: %.2f -- %.2f", im.min().item(), im.max().item())
+        _save(args.output, "%04d_reference.png" % idx, ref)
+        _save(args.output, "%04d_low_spp.png" % idx, low_spp)
 
         if not args.dump_features:
             continue
@@ -69,7 +72,7 @@ def main(args):
             im = im.mean(1)  # average samples
             LOG.info("  %s (feature): %.2f -- %.2f", k, im.min().item(), im.max().item())
             os.makedirs(args.output, exist_ok=True)
-            _save(args.output, "%04d_%s.png" % (idx, k), im, dtype=np.uint16)
+            _save(args.output, f"%04d_%s_{args.spp}spp.png" % (idx, k), im, dtype=np.uint16)
 
 
 if __name__ == "__main__":

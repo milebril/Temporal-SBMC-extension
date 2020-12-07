@@ -4,8 +4,8 @@
 
 OUTPUT?=$(shell pwd)/output
 DATA?=$(shell pwd)/data
-PBRT?=_extras/rendernet_pbrt/src/bin/pbrt
-OBJ2PBRT?=_extras/rendernet_pbrt/src/bin/obj2pbrt
+PBRT?=$(shell pwd)/pbrt/bin/pbrt
+OBJ2PBRT?=$(shell pwd)/pbrt/bin/obj2pbrt
 
 # Data server
 REMOTE=https://data.csail.mit.edu/graphics/sbmc
@@ -69,6 +69,128 @@ test:
 .PHONY: demo/render_bins demo/render_reference \
 	demo/visualize demo/denoiser demo/train demo/train_kpcn \
 	demo/render_samples server clean nvidia_docker demo/data
+
+# -----------------------------------------------------------------------------
+
+demo/render_samples_emil:
+	@python scripts/render_samples.py $(PBRT) \
+		$(DATA)/demo/scenes/mblur.pbrt \
+		$(OUTPUT)/demo/emil_samples \
+		--tmp_dir $(OUTPUT)/tmp --height 512 --width 512 --spp 4 \
+		--gt_spp 4 --verbose
+
+demo/render_exr_emil:
+	@python scripts/render_exr.py $(PBRT) \
+		$(DATA)/demo/scenes/mblur.pbrt \
+		$(OUTPUT)/emil/out.exr \
+		--tmp_dir $(OUTPUT)/tmp --height 512 --width 512 --spp 512
+
+render_png:
+	@python scripts/render_samples.py $(PBRT) \
+		$(DATA)/demo/scenes/mblur.pbrt \
+		$(OUTPUT)/emil/samples/render \
+		--tmp_dir $(OUTPUT)/tmp --height 512 --width 512 --spp 8 \
+		--gt_spp 1 --verbose
+	@cd $(OUTPUT)/emil/samples && find . -name "*.bin" > filelist.txt
+	@python scripts/visualize_dataset.py \
+		${OUTPUT}/emil/samples/ \
+		${OUTPUT}/emil/renders --spp 512
+
+generate_and_render:
+	@rm -rf $(OUTPUT)/emil/training_scenes
+	@python scripts/generate_training_data.py \
+		$(PBRT) \
+		$(OBJ2PBRT) \
+		$(DATA)/demo/scenegen_assets \
+		$(OUTPUT)/emil/training_scenes \
+		--count 1 --spp 8 --gt_spp 1 --height 512 --width 512 --verbose --custom --no-clean
+	@cd $(OUTPUT)/emil/training_scenes && find . -name "*.bin" > filelist.txt
+	@python scripts/visualize_dataset.py \
+		$(OUTPUT)/emil/training_scenes \
+		$(OUTPUT)/emil/dataviz --spp 8
+
+generate_render_denoise:
+	@rm -rf $(OUTPUT)/emil/training_scenes
+	@python scripts/generate_training_data.py \
+		$(PBRT) \
+		$(OBJ2PBRT) \
+		$(DATA)/demo/scenegen_assets \
+		$(OUTPUT)/emil/training_scenes \
+		--count 1 --spp 4 --gt_spp 512 --height 512 --width 512 --verbose --custom --no-clean
+	@cd $(OUTPUT)/emil/training_scenes && find . -name "*.bin" > filelist.txt
+	@python scripts/visualize_dataset.py \
+		$(OUTPUT)/emil/training_scenes \
+		$(OUTPUT)/emil/compare/ --spp 4
+	@python scripts/denoise_sequence.py \
+		--input $(OUTPUT)/emil/training_scenes \
+		--output $(OUTPUT)/emil/compare/ \
+		--spp 4 \
+		--checkpoint $(DATA)/pretrained_models/gharbi2019_sbmc
+	@python scripts/denoise_sequence.py \
+		--input $(OUTPUT)/emil/training_scenes \
+		--output $(OUTPUT)/emil/compare/bako \
+		--spp 4 \
+		--checkpoint $(DATA)/pretrained_models/bako2017_finetuned
+
+generate_render_denoise_quick:
+	@rm -rf $(OUTPUT)/emil/training_scenes
+	@python scripts/generate_training_data.py \
+		$(PBRT) \
+		$(OBJ2PBRT) \
+		$(DATA)/demo/scenegen_assets \
+		$(OUTPUT)/emil/training_scenes \
+		--count 1 --spp 4 --gt_spp 16 --height 512 --width 512 --verbose --custom --no-clean
+	@cd $(OUTPUT)/emil/training_scenes && find . -name "*.bin" > filelist.txt
+	@python scripts/visualize_dataset.py \
+		$(OUTPUT)/emil/training_scenes \
+		$(OUTPUT)/emil/compare/ --spp 4
+	@python scripts/denoise_sequence.py \
+		--input $(OUTPUT)/emil/training_scenes \
+		--output $(OUTPUT)/emil/compare/ \
+		--spp 4 \
+		--checkpoint $(DATA)/pretrained_models/gharbi2019_sbmc
+
+generate_scenes_emil:
+	@rm -rf $(OUTPUT)/emil/training_scenes
+	@python scripts/generate_training_data.py \
+		$(PBRT) \
+		$(OBJ2PBRT) \
+		$(DATA)/demo/scenegen_assets \
+		$(OUTPUT)/emil/training_scenes \
+		--count 1 --spp 4 --gt_spp 4 --width 512 --height 512 --no-clean
+	@cd $(OUTPUT)/emil/training_scenes && find . -name "*.bin" > filelist.txt
+
+generate_sequence:
+	@rm -rf $(OUTPUT)/emil/training_sequence
+	@python scripts/generate_training_sequence.py \
+		$(PBRT) \
+		$(OBJ2PBRT) \
+		$(DATA)/demo/scenegen_assets \
+		$(OUTPUT)/emil/training_sequence \
+		--count 1 --spp 4 --gt_spp 1 --width 512 --height 512 --no-clean
+	@cd $(OUTPUT)/emil/training_sequence && find . -name "*.bin" > filelist.txt
+	@python scripts/visualize_dataset.py \
+		$(OUTPUT)/emil/training_sequence/render_samples_seq \
+		$(OUTPUT)/emil/dataviz_sequence --spp 4
+
+denoise_sequence:
+	# @python scripts/denoise_sequence.py	\
+	# 	--input $(OUTPUT)/emil/training_sequence/render_samples_seq \
+	# 	--output $(OUTPUT)/emil/dataviz_sequence/denoised/ \
+	# 	--spp 4 \
+	# 	--checkpoint data/pretrained_models/gharbi2019_sbmc
+	@python scripts/denoise.py \
+		--input $(OUTPUT)/emil/training_sequence/render_samples_seq \
+		--output $(OUTPUT)/emil/dataviz_sequence/denoised/ \
+		--spp 4 --sequence \
+		--checkpoint $(DATA)/pretrained_models/gharbi2019_sbmc
+
+train_emil:
+	@python scripts/train.py \
+		--checkpoint_dir $(OUTPUT)/emil/training \
+		--data $(OUTPUT)/emil/training_scenes/filelist.txt \
+		--env sbmc_ours --port 2001 --bs 1 \
+		--spp 4
 
 # -----------------------------------------------------------------------------
 

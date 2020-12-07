@@ -50,7 +50,6 @@ def _pad(batch, out_, kpcn_mode):
     out_ = th.nn.functional.pad(out_, (pad_w, pad_w, pad_h, pad_h))
     return out_
 
-
 def _split_tiles(batch, max_sz=1024, pad=256):
     h, w = batch["low_spp"].shape[-2:]
     keys = ["radiance", "features", "kpcn_diffuse_in", "kpcn_specular_in",
@@ -92,13 +91,17 @@ def _split_tiles(batch, max_sz=1024, pad=256):
                                 start_x+pad_x, end_x-pad_x2, tilepad))
         return ret
 
-
-def main(args):
+def denoise(args, input_root="", output_root=""):
     start = time.time()
     if not os.path.exists(args.input):
         raise ValueError("input {} does not exist".format(args.input))
-
-    data_root = os.path.abspath(args.input)
+    
+    if input_root == "":
+        data_root = os.path.abspath(args.input)
+    else:
+        data_root = os.path.abspath(input_root)
+    
+    # Load everything into a tpm folder and link it up
     name = os.path.basename(data_root)
     tmpdir = tempfile.mkdtemp()
     os.symlink(data_root, os.path.join(tmpdir, name))
@@ -110,11 +113,17 @@ def main(args):
     data_params = meta_params["data_params"]
     if args.spp:
         data_params["spp"] = args.spp
-    data = sbmc.FullImagesDataset(tmpdir, **data_params)
+
+    # Load the dataset
+    if args.sequence:
+        data = sbmc.FullImagesDataset(os.path.join(tmpdir, name), **data_params)
+    else:
+        data = sbmc.FullImagesDataset(tmpdir, **data_params)
     dataloader = DataLoader(data, batch_size=1, shuffle=False, num_workers=0)
 
     LOG.info("Denoising input with {} spp".format(data_params["spp"]))
 
+    # Check whether to use KPCN or Sample Based
     kpcn_mode = meta_params["kpcn_mode"]
     if kpcn_mode:
         LOG.info("Using [Bako2017] denoiser.")
@@ -138,10 +147,15 @@ def main(args):
     elapsed = (time.time() - start) * 1000
     LOG.info("setup time {:.1f} ms".format(elapsed))
 
+    if args.sequence:
+        scene_names = [f.path for f in os.scandir(data_root) if f.is_dir()] # Used to get the correct scene name
+        scene_names.reverse()
+        # print(scene_names[0].split('/')[-1] + ".png")
+
     LOG.info("starting the denoiser")
     for scene_id, batch in enumerate(dataloader):
         for k in batch.keys():
-            batch[k] = batch[k].to(device)
+            batch[k] = batch[k].to(device) #Sets the tensors to the correct device type
         scene = os.path.basename(data.scenes[scene_id])
         LOG.info("  scene {}".format(scene))
         tile_sz = args.tile_size
@@ -164,14 +178,25 @@ def main(args):
         elapsed = (time.time() - start)*1000
         LOG.info("    denoising time {:.1f} ms".format(elapsed))
 
+        # Change location if sequence is to be denoised
+        print(scene_id)
+        if args.sequence:
+            args.output = args.output + scene_names[scene_id].split('/')[-1] + ".png"
+
         out_radiance = out_radiance[0, ...].cpu().numpy().transpose([1, 2, 0])
+
         outdir = os.path.dirname(args.output)
         os.makedirs(outdir, exist_ok=True)
         pyexr.write(args.output, out_radiance)
-
+        
         png = args.output.replace(".exr", ".png")
         skio.imsave(png, (np.clip(out_radiance, 0, 1)*255).astype(np.uint8))
+
     shutil.rmtree(tmpdir)
+    
+
+def main(args):
+    denoise(args)
 
 
 if __name__ == '__main__':
@@ -189,6 +214,11 @@ if __name__ == '__main__':
     parser.add_argument("--tile_pad", default=256, help="We process in tiles"
                         " to limit GPU memory usage. This is the padding"
                         " around tiles, for overlapping tiles.")
+
+    # Flag to enable sequence denoising instead of single frame denoising.
+    parser.add_argument('--sequence', dest="sequence", action="store_true",
+                        default=False)
+
     args = parser.parse_args()
     ttools.set_logger(True)
     main(args)

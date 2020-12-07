@@ -31,7 +31,6 @@ from . import modules as ops
 
 __all__ = ["Multisteps", "KPCN"]
 
-
 class Multisteps(nn.Module):
     """
     Model from Sample-Based Monte-Carlo denoising using a Kernel-Splatting
@@ -70,7 +69,7 @@ class Multisteps(nn.Module):
         self.ksize = ksize
         self.splat = splat
         self.pixel = pixel
-        self.width = width
+        self.width = width # = 128 = tilesize
         self.embedding_width = embedding_width
         self.eps = 1e-8  # for kernel normalization
 
@@ -83,6 +82,8 @@ class Multisteps(nn.Module):
                 n_in = self.embedding_width + width
 
             # 1x1 convolutions implement the per-sample transformation
+            # 128 x 1 sample embedding berekenen
+            print(f"{n_in} {self.embedding_width} {width}")
             self.add_module("embedding_{:02d}".format(step),
                             ops.ConvChain(n_in, self.embedding_width,
                                           width=width, depth=3, ksize=1,
@@ -95,6 +96,7 @@ class Multisteps(nn.Module):
                 pooling="max"))
 
         # Final regression for the per-sample kernel (also 1x1 convs)
+        # Generate the Kernel used for splatting
         self.kernel_regressor = ops.ConvChain(width + self.embedding_width,
                                               ksize*ksize, depth=3,
                                               width=width, ksize=1,
@@ -102,6 +104,7 @@ class Multisteps(nn.Module):
                                               pad=False, output_type="linear")
 
         # This module aggregates the sample contributions
+        # Splat sample on image
         self.kernel_update = ops.ProgressiveKernelApply(splat=self.splat)
 
     def forward(self, samples):
@@ -139,6 +142,8 @@ class Multisteps(nn.Module):
         else:
             gf = gfeatures.repeat([spp, 1, h, w])
 
+        # For loop for computing th final Sample embeddings and context features
+        # Used later on in the kernel generation
         for step in range(self.nsteps):
             if limit_memory_usage:
                 # Go through the samples one by one to preserve memory for
@@ -146,11 +151,11 @@ class Multisteps(nn.Module):
                 for sp in range(spp):
                     f = features[:, sp].to(radiance.device)
                     if step == 0:  # Global features at first iteration only
-                        f = th.cat([f, gf], 1)
+                        f = th.cat([f, gf], 1) # .cat() = concatenates the given tensores in the given dimension.
                     else:
                         f = th.cat([f, propagated], 1)
 
-                    f = modules["embedding_{:02d}".format(step)](f)
+                    f = modules["embedding_{:02d}".format(step)](f) #Calculate the sample embeddings 
 
                     new_features[:, sp].copy_(f, non_blocking=True)
 

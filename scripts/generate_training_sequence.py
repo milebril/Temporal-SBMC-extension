@@ -1,24 +1,3 @@
-#!/usr/bin/env python
-# encoding: utf-8
-# Sample-based Monte Carlo Denoising using a Kernel-Splatting Network
-# Michaël Gharbi Tzu-Mao Li Miika Aittala Jaakko Lehtinen Frédo Durand
-# Siggraph 2019
-#
-# Copyright (c) 2019 Michaël Gharbi
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-"""Generate synthetic random scenes to be used for training."""
-
 import uuid
 import time
 import argparse
@@ -27,17 +6,20 @@ import os
 import subprocess
 import shutil
 
+#repurpose
+from generate_training_data import GeneratorParams, render
+
 import numpy as np
 
 import ttools
 
 import sbmc.scene_generator as scenegen
 
-
 LOG = ttools.get_logger(__name__)
 
-# python scripts/denoise.py --input output/emil/training_scenes/ --output output/emil/dataviz/denoised.png --spp 8 --checkpoint data/pretrained_models/gharbi2019_sbmc/
-
+"""
+    Create 1 random scene, and fly with the camere through it
+"""
 
 def _validate_render(path):
     """
@@ -74,7 +56,6 @@ def _clean_bin_folder(path):
             else:
                 os.remove(file)
 
-
 def _random_dirname():
     """Generates a directory name for the random scene.
 
@@ -86,93 +67,6 @@ def _random_dirname():
     name = "%s_%s_%s" % (hostname, date, str(uuid.uuid4())[:8])
     return name
 
-
-class GeneratorParams(object):
-    """"""
-    def __init__(self, args):
-        super(GeneratorParams, self).__init__()
-
-        self.working_dir = os.getcwd()
-        self.output = args.output
-
-        self.converter = os.path.abspath(args.obj2pbrt_exe)
-        self.renderer = os.path.abspath(args.pbrt_exe)
-
-        # if args.suncg_root is not None:
-        #     self.suncg_converter = scenegen.SuncgConverter(
-        #         os.path.abspath(args.suncg_root))
-        # else:
-        #     self.suncg_converter = None
-
-        assets = os.path.abspath(args.assets)
-        if not os.path.exists(assets):
-            LOG.warning("No valid assets folder provided.")
-
-        envmaps = os.path.join(assets, "envmaps.txt")
-        textures = os.path.join(assets, "textures.txt")
-        models = os.path.join(assets, "models.txt")
-
-        self.envmaps = self._load_from_filelist(envmaps)
-        self.textures = self._load_from_filelist(textures)
-        self.models = self._load_from_filelist(models)
-
-        LOG.debug("Assets in %s:", args.assets)
-        LOG.debug("  - %d envmaps" % len(self.envmaps))
-        LOG.debug("  - %d textures" % len(self.textures))
-        LOG.debug("  - %d models" % len(self.models))
-
-        self.gen = []
-        for gen in args.generators:
-            if not hasattr(scenegen, gen):
-                LOG.error("Unknown generator `%s`", gen)
-                raise RuntimeError("Unknown generator `%s`", gen)
-
-            gen_args = [self.envmaps, self.textures, self.models,
-                          self.converter]
-        #
-        #     if synth == "SunCGSynthesizer":
-        #         assert args.suncg_root is not None, "SunCGSynthesizer needs a path to SunCG"
-        #         synth_args.append(self.suncg_converter)
-        #
-            self.gen.append(getattr(scenegen, gen)(*gen_args))
-
-    def _load_from_filelist(self, listpath):
-        data = []
-
-        if not os.path.exists(listpath):
-            return data
-
-        root = os.path.dirname(listpath)
-        with open(listpath) as fid:
-            for l in fid.readlines():
-                path = os.path.join(root, l.strip())
-                path = path.replace("./", "")  # removes relative path if any
-                if os.path.exists(path):
-                    data.append(path)
-        return data
-
-
-# class RenderingParams(object):
-#     def __init__(self, args):
-#         super(RenderingParams, self).__init__()
-#         self.spp = args.spp
-#         self.gt_spp = args.gt_spp
-#         self.height = args.height
-#         self.width = args.width
-#         self.path_depth = args.path_depth
-#         self.tile_size = args.tile_size
-#
-#     def __str__(self):
-#         s = "RenderingParams: "
-#         s += "spp = {}; ".format(self.spp)
-#         s += "gt_spp = {}; ".format(self.gt_spp)
-#         s += "height = {}; ".format(self.height)
-#         s += "width = {}; ".format(self.width)
-#         s += "path_depth = {}; ".format(self.path_depth)
-#         s += "tile_size = {}".format(self.tile_size)
-#         return s
-
-
 def create_scene_file(q, render_queue):
     while True:
         data = q.get(block=True)
@@ -180,19 +74,20 @@ def create_scene_file(q, render_queue):
         idx = data["idx"]
         params = data["gen_params"]
         rparams = data["render_params"]
-        custom = data["custom"]
 
-        LOG.debug("Creating scene {}".format(idx))
+        curr_frame = 0
+
+        LOG.debug("Creating scene {}, frame {}".format(idx, curr_frame))
         np.random.seed(idx)
 
         # Create container
-        dirname = _random_dirname()
-        dst_dir = os.path.abspath(os.path.join(params.output, dirname))
+        dirname = "render_samples_seq"
+        dst_dir = os.path.abspath(os.path.join(params.output, dirname, f"scene-{idx}_frame-{0}"))
 
         try:
             LOG.debug("Setting up folder {}".format(dst_dir))
             os.makedirs(dst_dir, exist_ok=True)
-            os.makedirs(os.path.join(dst_dir, "geometry"), exist_ok=True)
+            os.makedirs(os.path.join(dst_dir, f"geometry_scene#{idx}"), exist_ok=True)
         except Exception as e:
             LOG.warning(
                 "Could not setup directories %s, " \
@@ -225,20 +120,11 @@ def create_scene_file(q, render_queue):
         attempt = 0
         try:
             gen = np.random.choice(params.gen)
-
-            if custom:
-                while not gen.sample_custom_scene(scn, dst_dir):
-                    attempt += 1
-                    LOG.warning("Sampling another Scene {}".format(gen))
-                    if attempt == max_attempts:
-                        break
-
-            else:
-                while not gen.sample(scn, dst_dir):
-                    attempt += 1
-                    LOG.warning("Sampling another Scene {}".format(gen))
-                    if attempt == max_attempts:
-                        break
+            while not gen.sample_sequence(scn, dst_dir, idx=idx):
+                attempt += 1
+                LOG.warning("Sampling another Scene {}".format(gen))
+                if attempt == max_attempts:
+                    break
 
             if attempt == max_attempts:
                 LOG.warning(
@@ -251,68 +137,40 @@ def create_scene_file(q, render_queue):
                 " scene".format(attempt, e))
             q.task_done()
             continue
+        
+        # Render the frames
+        for i in range(24):
+            dst_dir = os.path.abspath(os.path.join(params.output, "render_samples_seq" ,f"scene-{idx}_frame-{i}"))
+            try:
+                os.makedirs(dst_dir, exist_ok=True)
+            except Exception as e:
+                LOG.warning(
+                    "Could not setup directories %s, " \
+                    "continuing to next scene: %s" % (dst_dir, e))
+                q.task_done()
+                continue
 
-        try:
-            scn_file = os.path.join(dst_dir, "scene.pbrt")
-            with open(scn_file, 'w') as fid:
-                fid.write(scn.pbrt())
-        except:
-            LOG.error("Failed to save .pbrt file, continuing")
-            q.task_done()
-            continue
+            try:
+                scn_file = os.path.join(dst_dir, "scene.pbrt")
+                with open(scn_file, 'w') as fid:
+                    fid.write(scn.pbrt())
+            except:
+                LOG.error("Failed to save .pbrt file, continuing")
+                q.task_done()
+                continue
 
-        render_data = {"idx": idx, "gen_params": params, "render_params":
-                       rparams, "scene_dir": dst_dir, "verbose":
-                       data["verbose"], "clean": data["clean"]}
-        LOG.info("Adding scene #%d to the render queue", idx)
-        render_queue.put(render_data, block=False)
+
+            render_data = {"idx": idx, "gen_params": params, "render_params":
+                        rparams, "scene_dir": dst_dir, "verbose":
+                        data["verbose"], "clean": data["clean"]}
+            LOG.info("Adding scene #%d f%d to the render queue", idx, i)
+            render_queue.put(render_data, block=False)
+
+            # Move camera in scene
+            scn.translate_camera([0.001, 0.001, 0])
 
         q.task_done()
         continue
-
-
-def render(render_queue):
-    while True:
-        data = render_queue.get(block=True)
-        idx = data["idx"]
-        params = data["gen_params"]
-        rparams = data["render_params"]
-        dst_dir = data["scene_dir"]
-        verbose = data["verbose"]
-        clean = data["clean"]
-        LOG.info("Rendering scene '%s' using '%s'", dst_dir, params.renderer)
-
-        try:
-            os.chdir(dst_dir)
-            if verbose:
-                stderr = None
-            else:
-                stderr = subprocess.DEVNULL
-            ret = subprocess.check_output([params.renderer, "scene.pbrt"],
-                                          stderr=stderr)
-            LOG.debug("Renderer output %s", ret)
-        except Exception as e:
-            LOG.warning("Rendering failed for scene %s: %s" % (dst_dir, e))
-            render_queue.task_done()
-            continue
-        os.chdir(params.working_dir)
-
-        # If scene is not rendered, delete folder
-        if not _validate_render(dst_dir):
-            LOG.warning(
-                "Render did not complete properly, deleting %s" % dst_dir)
-            shutil.rmtree(dst_dir)
-            render_queue.task_done()
-            continue
-
-        # Remove pbrt scene file, geometry and folders (everything except the
-        # .bins)
-        if clean:
-            _clean_bin_folder(dst_dir)
-
-        LOG.info("Finished rendering scene #%d", idx)
-        render_queue.task_done()
-
 
 def main(args):
     ttools.set_logger(args.verbose)
@@ -350,7 +208,6 @@ def main(args):
                 "render_params": render_params,
                 "verbose": args.verbose,
                 "clean": args.clean,
-                "custom": args.custom
             }
             if args.count > 0 and count == args.count:
                 break
@@ -371,9 +228,12 @@ def main(args):
 
     LOG.debug("Shutting down the scene generator")
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+
+    #PBRT: "/pbrt/bin/pbrt"
+    #OBJ2PBRT: "/pbrt/bin/obj.pbrt"
+    #DATA: "/data/demo/scenegen_assets"
 
     # External binaries need to render the scene and convert the geometry
     parser.add_argument("pbrt_exe", help="path to the `pbrt` executable.")
@@ -398,6 +258,8 @@ if __name__ == "__main__":
                         help="threads to use for parallelized work.")
     parser.add_argument('--count', type=int, default=-1,
                         help="number of scenes to generate per worker.")
+    parser.add_argument('--frames', type=int, default=8,
+                        help="number of frames of this scene to generate.")
     parser.add_argument('--batch_size', type=int, default=1,
                         help="number of scenes to generate before gathering"
                         " the outputs.")
@@ -420,8 +282,5 @@ if __name__ == "__main__":
 
     parser.add_argument('--no-clean', dest="clean", action="store_false",
                         default=True)
-    parser.add_argument('--custom', dest="custom", action="store_true",
-                    default=True)
-                        
 
     main(parser.parse_args())

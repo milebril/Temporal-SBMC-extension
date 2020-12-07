@@ -29,6 +29,9 @@ from .converters import ObjConverter
 from . import geometry
 from . import randomizers
 from . import xforms
+from . import materials
+from . import textures
+from . import lights
 
 
 __all__ = ["OutdoorSceneGenerator"]
@@ -80,11 +83,17 @@ class OutdoorSceneGenerator(SceneGenerator):
         z_cam = np.random.uniform(0.01, 0.1)
         cam_fov = np.random.uniform(15, 65)
 
-        cam_up = np.random.uniform(size=(3,))
+        # cam_up = np.random.uniform(size=(3,))
+        cam_up = [0,0,1]
         cam_pos = np.array([r_cam*np.cos(theta_cam), r_cam*np.sin(theta_cam),
                             z_cam])
-        cam_target = np.random.uniform(0, 1, size=3)
-        cam_target[2] = np.random.uniform(1., 2.)*z_cam
+        # cam_target = np.random.uniform(0, 1, size=3)
+        # cam_target[2] = np.random.uniform(1., 2.)*z_cam
+        cam_target = [-1, 0, 0]
+
+        # Scene corneel:
+        # cam_pos = np.array([-151.685, 103.908, 141.331])
+        # cam_target = [14.684, 23.628, 140.381]
 
         cam_params = {"position": list(cam_pos), "target": list(cam_target),
                       "up": list(cam_up), "fov": cam_fov}
@@ -123,7 +132,7 @@ class OutdoorSceneGenerator(SceneGenerator):
         xy = xy[:, keep]
 
         # keep max 50 objects
-        nmax = 50
+        nmax = 20
         if xy.shape[1] > nmax:
             xy = xy[:, :nmax]
 
@@ -135,7 +144,7 @@ class OutdoorSceneGenerator(SceneGenerator):
 
         return xy, scaled_radius, proj
 
-    def sample(self, scn, dst_dir, params=None):
+    def sample(self, scn, dst_dir, params=None, idx=0):
         self._log.debug("Sampling new outdoor scene")
         self._randomize_textures()
 
@@ -186,18 +195,19 @@ class OutdoorSceneGenerator(SceneGenerator):
 
             # Randomize the scale and position
             scl = radius*np.random.exponential(0.5)*np.ones((3,))
+            # scl = [0.2, 0.2, 0.5]
             z_idx = np.random.randint(0, z_layers)
             altitude = np.random.normal(0.1, 0.2)
             position = [coords[0, o_idx], coords[1, o_idx], altitude]
 
             # Create a ground plane
-            plane = geometry.Plane(20)
-            xforms.rotate(plane, [0, 1, 0], 90)
-            material = randomizers.random_material(
-                id="floormat", textures_list=self._current_textures)
-            plane.assign_material(material)
-            scn.shapes.append(plane)
-            scn.materials.append(material)
+            # plane = geometry.Plane(20)
+            # xforms.rotate(plane, [0, 1, 0], 90)
+            # material = randomizers.random_material(
+            #     id="floormat", textures_list=self._current_textures)
+            # plane.assign_material(material)
+            # scn.shapes.append(plane)
+            # scn.materials.append(material)
 
             # Compute the focus distance and update the camera paramters
             if do_dof and z_idx == 0 and o_idx == focus_at:
@@ -209,10 +219,283 @@ class OutdoorSceneGenerator(SceneGenerator):
 
             # Obj files may contain multiple pieces, add them all
             for obj in pbrt_objects:
-                geom = geometry.ExternalGeometry(os.path.join("geometry",
+                geom = geometry.ExternalGeometry(os.path.join(dst_dir, "geometry",
                                                               obj.path))
                 xforms.rotate(geom, np.random.uniform(size=(3,)),
                               np.random.uniform(0, 360))
+                xforms.scale(geom, scl)
+                xforms.translate(geom, position)
+
+                # Get a material for this piece
+                material = randomizers.random_material(
+                    id=obj.material.id, textures_list=self._current_textures)
+                scn.materials.append(material)
+
+                if this_mblur:
+                    xforms.translate(geom, mvec, target="end")
+
+                scn.shapes.append(geom)
+
+        self._log.debug("%s objects have motion blur", count_blurred)
+
+        # Add an envmap
+        env = randomizers.random_envmap(self._envmaps, nsamples=8)
+        xforms.rotate(env, [0, 0, 1], np.random.uniform(0, 360))
+        scn.lights.append(env)
+
+        # Attach the camera to the scene
+        scn.camera = Camera(**cam)
+
+        self._log.debug("Camera parameters %s. Motion blur? %s DoF? %s",
+                        scn.camera, do_mblur, do_dof)
+        if do_mblur:
+            if (scn.camera.shutteropen != 0.0 or
+                    scn.camera.shutterclose != 1.0):
+                return False
+        if do_dof:
+            if (not scn.camera.lensradius > 0.0 or not
+                    scn.camera.focaldistance > 0.0):
+                return False
+
+        self._log.debug("Generated Outdoor scene")
+
+        return True
+
+    def sample_custom_scene(self, scn, dst_dir, params=None, idx=0):
+        self._log.debug("Sampling Custom Outdoor Scene")
+        self._randomize_textures()
+
+        # Set Camera 
+
+        cam_position = [0, 0, 2]
+        cam_target = [0, 0, -1]
+        cam_up = [0, 1, 0]
+        cam_fov = 60
+
+        cam_params = {
+            "position": list(cam_position),
+            "target": list(cam_target),
+            "up": list(cam_up),
+            "fov": cam_fov
+        }
+
+        do_dof = False
+        do_mblur = True
+
+        if do_mblur:
+            cam_params["shutterclose"] = 1.0
+
+        if do_dof:
+            aperture = _random_aperture()
+        else:
+            aperture = 0.0
+        
+        cam_params["focaldistance"] = 2
+        cam_params["lensradius"] = aperture
+
+        # Main sphere
+        obj = geometry.Sphere(radius=0.5)
+        xforms.translate(obj, [3, 0, -1])
+        mat = materials.MatteMaterial(id="fefe", diffuse=[1, 1, 1])
+        obj.assign_material(mat)
+
+        #Motion blur on sphere
+        radius = 4
+        mvec_r = np.random.uniform(0.00, 2)*radius
+        # mvec_r = 3
+        # mvec_dir = np.random.uniform(size=(3,))
+        mvec_dir = [-1, 0, 0]
+        mvec_dir /= np.linalg.norm(mvec_dir)
+        mvec = mvec_dir*mvec_r
+
+        # Add/Remove the motion blur on the sphere
+        xforms.translate(obj, mvec, target="end")
+        
+        scn.shapes.append(obj)
+        scn.materials.append(mat)
+
+        obj = geometry.GoodPlane(scale=10)
+        xforms.rotate(obj, [1, 0, 0], 90)
+        xforms.translate(obj, [0, 0, -5])
+        mat  = materials.MatteMaterial(id="bfjebfe", diffuse=[0, 0, 0])
+        obj.assign_material(mat)
+        scn.shapes.append(obj)
+        scn.materials.append(mat)
+
+        '''
+        # Fetch a random object from the library
+        dst = os.path.join(dst_dir, "geometry")
+        mdl = np.random.choice(self._models)
+        pbrt_objects = self._converter(mdl, dst)
+        # Obj files may contain multiple pieces, add them all
+        for obj in pbrt_objects:
+            geom = geometry.ExternalGeometry(os.path.join(dst_dir, "geometry",
+                                                            obj.path))
+            # xforms.rotate(geom, np.random.uniform(size=(3,)),
+            #                 np.random.uniform(0, 360))
+            xforms.scale(geom, [4]*3)
+            xforms.translate(geom, [0, 0, -1])
+
+            # Get a material for this piece
+            material = randomizers.random_material(
+                id=obj.material.id, textures_list=self._current_textures)
+            scn.materials.append(material)
+
+            xforms.translate(geom, mvec, target="end")
+
+            scn.shapes.append(geom)
+        '''
+        
+        # Checkboard ground plane
+        # obj = geometry.GoodPlane(scale=15)
+        # xforms.translate(obj, [0, -1, -4])
+        # xforms.rotate(obj, [1,0,0], 90)
+        # tex = textures.Checkerboard("check", "spectrum", uscale=32, vscale=32, tex1=[0.1]*3, tex2=[0.8]*3)
+        # mat = materials.MatteMaterial(id="checkers", diffuse_texture=tex)
+        # obj.assign_material(mat)
+        
+        # scn.shapes.append(obj)
+        # scn.materials.append(mat)
+        
+        '''
+        mvec_r = np.random.uniform(0.00, 2)*1
+        mvec_dir = [0, 1, 0]
+        mvec_dir /= np.linalg.norm(mvec_dir)
+        mvec = mvec_dir*mvec_r
+
+        
+        obj = geometry.GoodPlane(scale=4)
+        xforms.rotate(obj, [1, 0, 0], 90)
+        xforms.translate(obj, [0, 0, -5])
+        mat = mat = materials.MirrorMaterial(id="Mirror")
+        obj.assign_material(mat)
+        
+        # Add/Remove the motion blur on the mirror
+        xforms.translate(obj, mvec, target="end")
+
+        scn.shapes.append(obj)
+        scn.materials.append(mat)
+
+        mvec_r = np.random.uniform(0.00, 2)*1
+        mvec_dir = [1, 0, 0]
+        mvec_dir /= np.linalg.norm(mvec_dir)
+        mvec = mvec_dir*mvec_r
+
+        obj = geometry.GoodPlane(scale=10)
+        xforms.rotate(obj, [1, 0, 0], -90)
+        xforms.translate(obj, [0, 0, 5])
+        mat = mat = materials.MirrorMaterial(id="Mirror")
+        obj.assign_material(mat)
+        
+        # Add/Remove the motion blur on the mirror
+        xforms.translate(obj, mvec, target="end")
+
+        scn.shapes.append(obj)
+        scn.materials.append(mat)
+        '''
+
+        # Add Light to the scene
+        light = lights.InifiniteLight(spectrum=[1, 1, 1])
+        scn.lights.append(light)
+        light2 = lights.PointLight(spectrum=[150, 150, 150])
+        xforms.translate(light2, [-3, 8, 4])
+        # scn.lights.append(light2)
+
+        # Attach the camera to the scene
+        scn.camera = Camera(**cam_params)
+
+        self._log.debug("Camera parameters %s. Motion blur? %s DoF? %s",
+                        scn.camera, do_mblur, do_dof)
+        if do_mblur:
+            if (scn.camera.shutteropen != 0.0 or
+                    scn.camera.shutterclose != 1.0):
+                return False
+        if do_dof:
+            if (not scn.camera.lensradius > 0.0 or not
+                    scn.camera.focaldistance > 0.0):
+                return False
+
+        self._log.debug("Generated Custom Outdoor Scene")
+
+        return True
+
+    def sample_sequence(self, scn, dst_dir, params=None, idx=0):
+        self._log.debug("Sampling new outdoor scene")
+        self._randomize_textures()
+
+        # Random camera
+        do_dof = np.random.choice([True, False])
+        do_mblur = np.random.choice([True, False])
+        cam = self._sample_camera()
+
+        if do_mblur:
+            cam["shutterclose"] = 1.0
+
+        if do_dof:
+            aperture = _random_aperture()
+        else:
+            aperture = 0.0
+
+        # Sample objects in the fulcrum of the camera
+        self._log.debug("Sampling object positions")
+        coords, radius, proj = self._obj_pos(cam)
+        count = coords.shape[1]
+
+        # Focus on one of the objects
+        if count > 0:
+            focus_at = np.random.randint(0, count)
+
+        # Randomizes the number of possible object altitudes
+        z_layers = np.random.poisson(0.5) + 1
+
+        count_blurred = 0  # Counts the number of objects that have motion blur
+        self._log.debug("Adding %d objects.", count)
+        for o_idx in range(count):  # Populate the scene
+
+            # If motion blur is activated, maybe blur this object
+            this_mblur = do_mblur and np.random.choice([True, False])
+            if this_mblur:
+                count_blurred += 1
+
+            # Sample a motion vector
+            mvec_r = np.random.uniform(0.00, 2)*radius
+            mvec_dir = np.random.uniform(size=(3,))
+            mvec_dir /= np.linalg.norm(mvec_dir)
+            mvec = mvec_dir*mvec_r
+
+            # Fetch a random object from the library
+            dst = os.path.join(dst_dir, f"geometry_scene#{idx}")
+            mdl = np.random.choice(self._models)
+            pbrt_objects = self._converter(mdl, dst)
+
+            # Randomize the scale and position
+            scl = radius*np.random.exponential(0.5)*np.ones((3,))
+            # scl = [0.2, 0.2, 0.5]
+            z_idx = np.random.randint(0, z_layers)
+            altitude = np.random.normal(0.1, 0.2)
+            position = [coords[0, o_idx], coords[1, o_idx], altitude]
+
+            # Create a ground plane
+            # plane = geometry.Plane(20)
+            # xforms.rotate(plane, [0, 1, 0], 90)
+            # material = randomizers.random_material(
+            #     id="floormat", textures_list=self._current_textures)
+            # plane.assign_material(material)
+            # scn.shapes.append(plane)
+            # scn.materials.append(material)
+
+            # Compute the focus distance and update the camera paramters
+            if do_dof and z_idx == 0 and o_idx == focus_at:
+                dist = np.linalg.norm(
+                    np.array(cam["position"])-np.array(position))
+                if dist > 0:
+                    cam["focaldistance"] = dist
+                    cam["lensradius"] = aperture
+
+            # Obj files may contain multiple pieces, add them all
+            for obj in pbrt_objects:
+                geom = geometry.ExternalGeometry(os.path.join(dst_dir, f"geometry_scene#{idx}",
+                                                              obj.path))
                 xforms.rotate(geom, np.random.uniform(size=(3,)),
                               np.random.uniform(0, 360))
                 xforms.scale(geom, scl)

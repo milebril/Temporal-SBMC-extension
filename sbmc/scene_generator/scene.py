@@ -64,6 +64,10 @@ class Scene():
             " lights".format(len(self.shapes), len(self.materials),
                              len(self.textures), len(self.lights))
 
+    def translate_camera(self, translation=[]):
+        if self.camera is not None:
+            self.camera.translate_camera(translation)
+
     def pbrt(self):
         """Encodes scene as valid PBRT scene description string.
 
@@ -211,6 +215,9 @@ class Camera():
         out += " .lens radius {:.10f}\n".format(self.lensradius)
         return out
 
+    def translate_camera(self, translation=[]):
+        self.position = [self.position[0] + translation[0], self.position[1] + translation[1], self.position[2] + translation[2]]
+
     def pbrt(self):
         """PBRT string representation.
 
@@ -229,4 +236,5 @@ class Camera():
                                                       self.shutterclose,
                                                       self.lensradius,
                                                       self.focaldistance)
+        print(s)
         return s
