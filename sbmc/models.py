@@ -25,9 +25,11 @@ import torch as th
 import torch.nn as nn
 
 from ttools.modules.image_operators import crop_like
+import ttools
 
 from . import modules as ops
 
+LOG = ttools.get_logger(__name__)
 
 __all__ = ["Multisteps", "KPCN"]
 
@@ -83,17 +85,23 @@ class Multisteps(nn.Module):
 
             # 1x1 convolutions implement the per-sample transformation
             # 128 x 1 sample embedding berekenen
-            print(f"{n_in} {self.embedding_width} {width}")
+            # print(f"{n_in} {self.embedding_width} {width}")
             self.add_module("embedding_{:02d}".format(step),
                             ops.ConvChain(n_in, self.embedding_width,
                                           width=width, depth=3, ksize=1,
                                           pad=False))
 
             # U-net implements the pixel spatial propagation step
-            self.add_module("propagation_{:02d}".format(step), ops.Autoencoder(
-                self.embedding_width, width, num_levels=3, increase_factor=2.0,
-                num_convs=3, width=width, ksize=3, output_type="leaky_relu",
-                pooling="max"))
+            if step == self.nsteps-1:
+                self.add_module("propagation_{:02d}".format(step), ops.RecurrentAutoencoder(
+                    self.embedding_width, width, num_levels=3, increase_factor=2.0,
+                    num_convs=3, width=width, ksize=3, output_type="leaky_relu",
+                    pooling="max"))
+            else:
+                self.add_module("propagation_{:02d}".format(step), ops.Autoencoder(
+                    self.embedding_width, width, num_levels=3, increase_factor=2.0,
+                    num_convs=3, width=width, ksize=3, output_type="leaky_relu",
+                    pooling="max"))
 
         # Final regression for the per-sample kernel (also 1x1 convs)
         # Generate the Kernel used for splatting
@@ -130,7 +138,6 @@ class Multisteps(nn.Module):
             features = features.mean(1, keepdim=True)
 
         bs, spp, nf, h, w = features.shape
-
         modules = {n: m for (n, m) in self.named_modules()}
 
         limit_memory_usage = not self.training
@@ -145,6 +152,7 @@ class Multisteps(nn.Module):
         # For loop for computing th final Sample embeddings and context features
         # Used later on in the kernel generation
         for step in range(self.nsteps):
+            print(step)
             if limit_memory_usage:
                 # Go through the samples one by one to preserve memory for
                 # large images
@@ -154,8 +162,7 @@ class Multisteps(nn.Module):
                         f = th.cat([f, gf], 1) # .cat() = concatenates the given tensores in the given dimension.
                     else:
                         f = th.cat([f, propagated], 1)
-
-                    f = modules["embedding_{:02d}".format(step)](f) #Calculate the sample embeddings 
+                    f = modules["embedding_{:02d}".format(step)](f) # Calculate the sample embeddings 
 
                     new_features[:, sp].copy_(f, non_blocking=True)
 
@@ -185,6 +192,7 @@ class Multisteps(nn.Module):
                 features = flat
                 nf = self.embedding_width
 
+            # print("Reduced: ", reduced.size())
             # Propagate spatially the pixel context
             propagated = modules["propagation_{:02d}".format(step)](reduced)
 
@@ -219,7 +227,7 @@ class Multisteps(nn.Module):
         # Remove the invalid boundary data
         crop = (self.ksize - 1) // 2
         output = output[..., crop:-crop, crop:-crop]
-
+        print(output)
         return {"radiance": output}
 
 

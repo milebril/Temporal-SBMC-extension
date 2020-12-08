@@ -474,3 +474,247 @@ class ProgressiveKernelApply(nn.Module):
             sum_w = sum_w + new_sum_w
 
         return sum_r, sum_w, max_w
+
+class RecurrentConvChain(nn.Module):
+    """A simple stack of convolution layers, with a recurrent input.
+
+    Args:
+        ninputs(int): number of input channels.
+        nhidden(int): number of input channels for the hidden layer
+        noutputs(int): number of output channels.
+        ksize(int): size of all the convolution kernels.
+        width(int): number of channels per intermediate layer.
+        depth(int): number of intermadiate layers.
+        stride(int): stride of the convolution.
+        pad(bool): if True, maintains spatial resolution by 0-padding,
+            otherwise keep only the valid part.
+        normalize(bool): applies normalization if True.
+        normalization_type(str): either batch or instance.
+        output_type(str): one of linear, relu, leaky_relu, tanh, elu.
+        activation(str): one of relu, leaky_relu, tanh, elu.
+        weight_norm(bool): applies weight normalization if True.
+    """
+    def __init__(self, ninputs, nhidden, noutputs, ksize=3, width=64, depth=3, stride=1,
+                 pad=True, normalize=False, normalization_type="batch",
+                 output_type="linear", activation="relu", weight_norm=True):
+        super(RecurrentConvChain, self).__init__()
+
+        self.hidden_size = nhidden
+        self.noutputs = noutputs
+
+        if depth <= 0:
+            LOG.error("RecurrentConvChain should have non-negative depth.")
+            raise ValueError("negative network depth.")
+
+        if pad:
+            padding = ksize//2
+        else:
+            padding = 0
+
+        layers = []
+        for d in range(depth-1):
+            if d == 0:
+                _in = ninputs + noutputs # Add the hidden input in the first layer of the conv operation
+            else:
+                _in = width
+            layers.append(
+                ConvChain._ConvBNRelu(_in, ksize, width, normalize=normalize,
+                                      normalization_type=normalization_type,
+                                      padding=padding, stride=stride,
+                                      activation=activation,
+                                      weight_norm=weight_norm))
+
+        # Last layer
+        if depth > 1:
+            _in = width
+        else:
+            _in = ninputs
+
+        conv = nn.Conv2d(_in, noutputs, ksize, bias=True, padding=padding)
+        if weight_norm:
+            conv = nn.utils.weight_norm(conv)
+        conv.bias.data.zero_()
+        if output_type == "elu" or output_type == "softplus":
+            nn.init.xavier_uniform_(
+                conv.weight.data, nn.init.calculate_gain("relu"))
+        else:
+            nn.init.xavier_uniform_(
+                conv.weight.data, nn.init.calculate_gain(output_type))
+        layers.append(conv)
+
+        # Rename layers
+        for im, m in enumerate(layers):
+            if im == len(layers)-1:
+                name = "prediction"
+            else:
+                name = "layer_{}".format(im)
+            self.add_module(name, m)
+        
+        # Set the activation module
+        if output_type == "linear":
+            pass
+        elif output_type == "relu":
+            self.add_module("output_activation", nn.ReLU(inplace=True))
+        elif output_type == "leaky_relu":
+            self.add_module("output_activation", nn.LeakyReLU(inplace=True))
+        elif output_type == "sigmoid":
+            self.add_module("output_activation", nn.Sigmoid())
+        elif output_type == "tanh":
+            self.add_module("output_activation", nn.Tanh())
+        elif output_type == "elu":
+            self.add_module("output_activation", nn.ELU())
+        elif output_type == "softplus":
+            self.add_module("output_activation", nn.Softplus())
+        else:
+            raise ValueError("Unknon output type '{}'".format(output_type))
+
+        self.hidden_tensor = None
+
+    def forward(self, x):
+        if type(self.hidden_tensor) == type(None):
+            self.hidden_tensor = self.init_hidden(x)
+        for idx, m in enumerate(self.children()):
+            print(f" {m} \n {x.size()} {self.hidden_tensor.size()} \n")
+            if idx == 0:
+                x = m(th.cat([x, self.hidden_tensor], 1))
+            else:
+                x = m(x)
+
+        self.hidden_tensor = x
+        # print(f"{x.size()} \n")
+        return x
+    
+    def init_hidden(self, tensor):
+        dim, nf, h, w = tensor.shape
+        return th.zeros((dim, self.noutputs, h, w))
+
+class RecurrentAutoencoder(nn.Module):
+    """A U-net style recurrent autoencoder.
+
+    Args:
+        ninputs(int): number of input channels.
+        nhidden(int): number of hidden channels
+        noutputs(int): number of output channels.
+        ksize(int): size of all the convolution kernels.
+        width(int): number of channels per intermediate layer at the finest
+            scale.
+        num_levels(int): number of spatial scales.
+        num_convs(int): number of conv layers per scale.
+        max_width(int): max number of features per conv layer.
+        increase_factor(float): each coarsest scale increases the number of
+            feature channels by this factor, up to `max_width`.
+        normalize(bool): applies normalization if True.
+        normalization_type(str): either batch or instance.
+        output_type(str): one of linear, relu, leaky_relu, tanh, elu.
+        activation(str): one of relu, leaky_relu, tanh, elu.
+    """
+    def __init__(self, ninputs, noutputs, ksize=3, width=64, num_levels=3,
+                 num_convs=2, max_width=512, increase_factor=1.0,
+                 normalize=False, normalization_type="batch",
+                 output_type="linear",
+                 activation="relu", pooling="max"):
+        super(RecurrentAutoencoder, self).__init__()
+
+        next_level = None
+        for lvl in range(num_levels-1, -1, -1):
+            n_in = min(int(width*(increase_factor)**(lvl-1)), max_width)
+            w = min(int(width*(increase_factor)**(lvl)), max_width)
+            n_us = min(int(width*(increase_factor)**(lvl+1)), max_width)
+            n_out = w
+            o_type = activation
+
+            if lvl == 0:
+                n_in = ninputs
+                o_type = output_type
+                n_out = noutputs
+            elif lvl == num_levels-1:
+                n_us = None
+
+            next_level = RecurrentAutoencoder._Level(
+                n_in, n_out, next_level=next_level, num_us=n_us,
+                ksize=ksize, width=w, num_convs=num_convs,
+                output_type=o_type, normalize=normalize,
+                normalization_type=normalization_type,
+                activation=activation, pooling=pooling)
+
+        self.add_module("net", next_level)
+
+    def forward(self, x):
+        return self.net(x)
+
+    def init_hidden(self):
+        return torch.zeros(1, self.hidden_size)
+
+    class _Level(nn.Module):
+        """One scale of the autoencoder processor.
+
+        Args:
+            num_inputs(int): number of input channels.
+            num_outputs(int): number of output channels.
+            next_level(Autoencoder._Level or None): the coarser level after
+                this one, or None if this is the coarsest level.
+            num_us(int): number of features in the upsampling branch.
+            ksize(int): size of all the convolution kernels.
+            width(int): number of channels per intermediate layer at the finest
+                scale.
+            num_convs(int): number of conv layers per scale.
+            output_type(str): one of linear, relu, leaky_relu, tanh, elu.
+            normalize(bool): applies normalization if True.
+            normalization_type(str): either batch or instance.
+            pooling(str): type of downsampling operator: "max", "average" or
+                "conv".
+            activation(str): one of relu, leaky_relu, tanh, elu.
+        """
+        def __init__(self, num_inputs, num_outputs, next_level=None,
+                     num_us=None, ksize=3, width=64, num_convs=2,
+                     output_type="linear", normalize=True,
+                     normalization_type="batch", pooling="max",
+                     activation="relu"):
+            super(RecurrentAutoencoder._Level, self).__init__()
+
+            self.is_last = (next_level is None)
+
+            if self.is_last:
+                self.left = ConvChain(
+                    num_inputs, num_outputs, ksize=ksize, width=width,
+                    depth=num_convs, stride=1, pad=True,
+                    normalize=normalize, normalization_type=normalization_type,
+                    output_type=output_type)
+            else:
+                assert num_us is not None
+                self.left = RecurrentConvChain(
+                    num_inputs, num_inputs, width, ksize=ksize, width=width,
+                    depth=num_convs, stride=1, pad=True, normalize=normalize,
+                    normalization_type=normalization_type,
+                    output_type=activation, activation=activation)
+                if pooling == "max":
+                    self.downsample = nn.MaxPool2d(2, 2)
+                elif pooling == "average":
+                    self.downsample = nn.AvgPool2d(2, 2)
+                elif pooling == "conv":
+                    self.downsample = nn.Conv2d(width, width, 2, stride=2)
+                else:
+                    raise ValueError("unknown pooling'{}'".format(pooling))
+
+                self.next_level = next_level
+                self.right = ConvChain(
+                    num_us + width, num_outputs, ksize=ksize, width=width,
+                    depth=num_convs, stride=1, pad=True, normalize=normalize,
+                    normalization_type=normalization_type,
+                    output_type=output_type)
+
+        def forward(self, x):
+            left = self.left(x)
+            if self.is_last:
+                return left
+
+            ds = self.downsample(left)
+            next_level = self.next_level(ds)
+            us = F.interpolate(
+                next_level, size=left.shape[-2:], mode='bilinear',
+                align_corners=False)
+
+            # Concat skip connection
+            concat = th.cat([us, left], 1)
+            output = self.right(concat)
+            return output

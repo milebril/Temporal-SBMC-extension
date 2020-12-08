@@ -139,7 +139,7 @@ def create_scene_file(q, render_queue):
             continue
         
         # Render the frames
-        for i in range(24):
+        for i in range(2):
             dst_dir = os.path.abspath(os.path.join(params.output, "render_samples_seq" ,f"scene-{idx}_frame-{i}"))
             try:
                 os.makedirs(dst_dir, exist_ok=True)

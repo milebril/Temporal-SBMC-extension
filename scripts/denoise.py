@@ -150,7 +150,8 @@ def denoise(args, input_root="", output_root=""):
     if args.sequence:
         scene_names = [f.path for f in os.scandir(data_root) if f.is_dir()] # Used to get the correct scene name
         scene_names.reverse()
-        # print(scene_names[0].split('/')[-1] + ".png")
+
+    output_base = args.output
 
     LOG.info("starting the denoiser")
     for scene_id, batch in enumerate(dataloader):
@@ -179,9 +180,8 @@ def denoise(args, input_root="", output_root=""):
         LOG.info("    denoising time {:.1f} ms".format(elapsed))
 
         # Change location if sequence is to be denoised
-        print(scene_id)
         if args.sequence:
-            args.output = args.output + scene_names[scene_id].split('/')[-1] + ".png"
+            args.output = output_base + scene_names[scene_id].split('/')[-1] + ".png"
 
         out_radiance = out_radiance[0, ...].cpu().numpy().transpose([1, 2, 0])
 

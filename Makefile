@@ -167,7 +167,7 @@ generate_sequence:
 		$(OBJ2PBRT) \
 		$(DATA)/demo/scenegen_assets \
 		$(OUTPUT)/emil/training_sequence \
-		--count 1 --spp 4 --gt_spp 1 --width 512 --height 512 --no-clean
+		--count 1 --spp 4 --gt_spp 1 --width 128 --height 128 --no-clean
 	@cd $(OUTPUT)/emil/training_sequence && find . -name "*.bin" > filelist.txt
 	@python scripts/visualize_dataset.py \
 		$(OUTPUT)/emil/training_sequence/render_samples_seq \
