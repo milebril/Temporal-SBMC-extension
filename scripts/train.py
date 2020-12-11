@@ -59,6 +59,13 @@ def main(args):
         LOG.info("Model: pixel-based comparison from [Bako2017]")
         model = sbmc.KPCN(data.num_features, ksize=args.ksize)
         model_params = dict(ksize=args.ksize)
+    elif args.emil_mode:
+        LOG.info("Model: Temporal Sample-Based Denoising [Peters2021]")
+        model = sbmc.Multisteps(data.num_features, data.num_global_features,
+                                ksize=args.ksize, splat=not args.gather,
+                                pixel=args.pixel)
+        model_params = dict(ksize=args.ksize, gather=args.gather,
+                            pixel=args.pixel)
     else:
         LOG.info("Model: sample-based [Gharbi2019]")
         model = sbmc.Multisteps(data.num_features, data.num_global_features,
@@ -67,9 +74,14 @@ def main(args):
         model_params = dict(ksize=args.ksize, gather=args.gather,
                             pixel=args.pixel)
 
+    # Old
+    # dataloader = DataLoader(
+    #     data, batch_size=args.bs, num_workers=args.num_worker_threads,
+    #     shuffle=True)
+
     dataloader = DataLoader(
         data, batch_size=args.bs, num_workers=args.num_worker_threads,
-        shuffle=True)
+        shuffle=False) # Don't shuffle as we want to denoise sequences
 
     # Validation set uses a constant spp
     val_dataloader = None
@@ -110,9 +122,10 @@ def main(args):
 
     # Launch the training
     LOG.info("Training started, 'Ctrl+C' to abort.")
-    trainer.train(dataloader, num_epochs=args.num_epochs,
-                  val_dataloader=val_dataloader)
-
+    # trainer.train(dataloader, num_epochs=args.num_epochs,
+    #               val_dataloader=val_dataloader)
+    trainer.train(dataloader, num_epochs=1,
+                val_dataloader=val_dataloader)
 
 if __name__ == "__main__":
     parser = ttools.BasicArgumentParser()
@@ -123,6 +136,9 @@ if __name__ == "__main__":
     parser.add_argument(
         '--kpcn_mode', dest="kpcn_mode", action="store_true", default=False,
         help="if True, use the model from [Bako2017]: useful for comparison.")
+    parser.add_argument(
+        '--emil_mode', dest="emil_mode", action="store_true", default=False,
+        help="if True, use the model from [Peters2021]: temporal extension to [Gharbi2019].")
     parser.add_argument(
         '--gather', dest="gather", action="store_true", default=False,
         help="if True, use gather kernels instead of splat.")
