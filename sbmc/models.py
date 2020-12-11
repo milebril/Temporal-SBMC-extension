@@ -85,7 +85,6 @@ class Multisteps(nn.Module):
 
             # 1x1 convolutions implement the per-sample transformation
             # 128 x 1 sample embedding berekenen
-            # print(f"{n_in} {self.embedding_width} {width}")
             self.add_module("embedding_{:02d}".format(step),
                             ops.ConvChain(n_in, self.embedding_width,
                                           width=width, depth=3, ksize=1,
@@ -152,7 +151,6 @@ class Multisteps(nn.Module):
         # For loop for computing th final Sample embeddings and context features
         # Used later on in the kernel generation
         for step in range(self.nsteps):
-            print(step)
             if limit_memory_usage:
                 # Go through the samples one by one to preserve memory for
                 # large images
@@ -192,7 +190,6 @@ class Multisteps(nn.Module):
                 features = flat
                 nf = self.embedding_width
 
-            # print("Reduced: ", reduced.size())
             # Propagate spatially the pixel context
             propagated = modules["propagation_{:02d}".format(step)](reduced)
 
@@ -227,7 +224,6 @@ class Multisteps(nn.Module):
         # Remove the invalid boundary data
         crop = (self.ksize - 1) // 2
         output = output[..., crop:-crop, crop:-crop]
-        print(output)
         return {"radiance": output}
 
 

@@ -30,7 +30,6 @@ __all__ = ["ConvChain", "Autoencoder", "KernelApply", "ProgressiveKernelApply"]
 
 LOG = ttools.get_logger(__name__)
 
-
 class ConvChain(nn.Module):
     """A simple stack of convolution layers.
 
@@ -574,14 +573,12 @@ class RecurrentConvChain(nn.Module):
         if type(self.hidden_tensor) == type(None):
             self.hidden_tensor = self.init_hidden(x)
         for idx, m in enumerate(self.children()):
-            print(f" {m} \n {x.size()} {self.hidden_tensor.size()} \n")
             if idx == 0:
                 x = m(th.cat([x, self.hidden_tensor], 1))
             else:
                 x = m(x)
 
         self.hidden_tensor = x
-        # print(f"{x.size()} \n")
         return x
     
     def init_hidden(self, tensor):
