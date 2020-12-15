@@ -139,7 +139,7 @@ def create_scene_file(q, render_queue):
             continue
         
         # Render the frames
-        for i in range(10):
+        for i in range(params.frames):
             dst_dir = os.path.abspath(os.path.join(params.output, "render_samples_seq" ,f"scene-{idx}_frame-{i}"))
             try:
                 os.makedirs(dst_dir, exist_ok=True)
@@ -181,7 +181,7 @@ def main(args):
 
     LOG.info("Starting job on worker %d of %d with %d threads" %
              (args.worker_id, args.num_workers, args.threads))
-
+    print(args)
     gen_params = GeneratorParams(args)
     # render_params = RenderingParams(args)
     render_params = dict(spp=args.spp, gt_spp=args.gt_spp, height=args.height,

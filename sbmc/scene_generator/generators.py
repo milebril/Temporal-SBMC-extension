@@ -83,17 +83,33 @@ class OutdoorSceneGenerator(SceneGenerator):
         z_cam = np.random.uniform(0.01, 0.1)
         cam_fov = np.random.uniform(15, 65)
 
+        cam_up = np.random.uniform(size=(3,))
+        # cam_up = [0,0,1]
+        cam_pos = np.array([r_cam*np.cos(theta_cam), r_cam*np.sin(theta_cam),
+                            z_cam])
+
+        cam_target = np.random.uniform(0, 1, size=3)
+        cam_target[2] = np.random.uniform(1., 2.)*z_cam
+        # cam_target = [-1, 0, 0] Voor sequence!
+
+        cam_params = {"position": list(cam_pos), "target": list(cam_target),
+                      "up": list(cam_up), "fov": cam_fov}
+        return cam_params
+
+    def _sample_sequence_camera(self):
+        r_cam = np.random.uniform(1.0, 2.5)
+        theta_cam = np.random.uniform(0, 2*np.pi)
+        z_cam = np.random.uniform(0.01, 0.1)
+        cam_fov = np.random.uniform(15, 65)
+
         # cam_up = np.random.uniform(size=(3,))
         cam_up = [0,0,1]
         cam_pos = np.array([r_cam*np.cos(theta_cam), r_cam*np.sin(theta_cam),
                             z_cam])
+
         # cam_target = np.random.uniform(0, 1, size=3)
         # cam_target[2] = np.random.uniform(1., 2.)*z_cam
-        cam_target = [-1, 0, 0]
-
-        # Scene corneel:
-        # cam_pos = np.array([-151.685, 103.908, 141.331])
-        # cam_target = [14.684, 23.628, 140.381]
+        cam_target = [-1, 0, 0] # Voor sequence!
 
         cam_params = {"position": list(cam_pos), "target": list(cam_target),
                       "up": list(cam_up), "fov": cam_fov}
@@ -117,7 +133,7 @@ class OutdoorSceneGenerator(SceneGenerator):
         scaled_radius = radius*factor
 
         # Place object centers
-        xy = pdisc(width=1, height=1, r=radius/factor)
+        xy = pdisc(width=1.5, height=1.5, r=radius/factor)
         np.random.shuffle(xy)  # randomize order
         xx = [x_[0] for x_ in xy]
         yy = [x_[1] for x_ in xy]
@@ -129,10 +145,11 @@ class OutdoorSceneGenerator(SceneGenerator):
         # too far
         proj = np.ravel(cam_direction.dot(xy))
         keep = np.logical_and(proj > 0.1*scaled_radius, proj < factor)
+        # keep = np.logical_and(proj > 2, True)
         xy = xy[:, keep]
 
         # keep max 50 objects
-        nmax = 20
+        nmax = 50
         if xy.shape[1] > nmax:
             xy = xy[:, :nmax]
 
@@ -194,20 +211,21 @@ class OutdoorSceneGenerator(SceneGenerator):
             pbrt_objects = self._converter(mdl, dst)
 
             # Randomize the scale and position
-            scl = radius*np.random.exponential(0.5)*np.ones((3,))
+            # scl = radius*np.random.exponential(0.5)*np.ones((3,))
+            scl = np.random.exponential(0.5)*np.ones((3,))
             # scl = [0.2, 0.2, 0.5]
             z_idx = np.random.randint(0, z_layers)
             altitude = np.random.normal(0.1, 0.2)
             position = [coords[0, o_idx], coords[1, o_idx], altitude]
 
             # Create a ground plane
-            # plane = geometry.Plane(20)
-            # xforms.rotate(plane, [0, 1, 0], 90)
-            # material = randomizers.random_material(
-            #     id="floormat", textures_list=self._current_textures)
-            # plane.assign_material(material)
-            # scn.shapes.append(plane)
-            # scn.materials.append(material)
+            plane = geometry.Plane(20)
+            xforms.rotate(plane, [0, 1, 0], 90)
+            material = randomizers.random_material(
+                id="floormat", textures_list=self._current_textures)
+            plane.assign_material(material)
+            scn.shapes.append(plane)
+            scn.materials.append(material)
 
             # Compute the focus distance and update the camera paramters
             if do_dof and z_idx == 0 and o_idx == focus_at:
@@ -426,7 +444,7 @@ class OutdoorSceneGenerator(SceneGenerator):
         # Random camera
         do_dof = np.random.choice([True, False])
         do_mblur = np.random.choice([True, False])
-        cam = self._sample_camera()
+        cam = self._sample_sequence_camera()
 
         if do_mblur:
             cam["shutterclose"] = 1.0
@@ -469,7 +487,9 @@ class OutdoorSceneGenerator(SceneGenerator):
             pbrt_objects = self._converter(mdl, dst)
 
             # Randomize the scale and position
-            scl = radius*np.random.exponential(0.5)*np.ones((3,))
+            # scl = radius*np.random.exponential(0.5)*np.ones((3,))
+            scl = np.random.exponential(0.5)*np.ones((3,))
+            print(scl)
             # scl = [0.2, 0.2, 0.5]
             z_idx = np.random.randint(0, z_layers)
             altitude = np.random.normal(0.1, 0.2)

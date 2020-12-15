@@ -31,7 +31,7 @@ from . import modules as ops
 
 LOG = ttools.get_logger(__name__)
 
-__all__ = ["Multisteps", "KPCN"]
+__all__ = ["Multisteps", "RecurrentMultisteps", "KPCN"]
 
 class Multisteps(nn.Module):
     """
@@ -243,7 +243,7 @@ class RecurrentMultisteps(nn.Module):
     def __init__(self, n_features, n_global_features, width=128,
                  embedding_width=128, ksize=21, splat=True, nsteps=3,
                  pixel=False):
-        super(Multisteps, self).__init__()
+        super(RecurrentMultisteps, self).__init__()
 
         if ksize < 3 or (ksize % 2 == 0):
             LOG.error("Kernel size should be odd and > 3.")

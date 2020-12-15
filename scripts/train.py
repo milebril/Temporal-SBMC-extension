@@ -22,6 +22,8 @@ import numpy as np
 import torch as th
 from torch.utils.data import DataLoader
 
+from sbmc import modules
+
 import ttools
 
 import sbmc
@@ -61,7 +63,7 @@ def main(args):
         model_params = dict(ksize=args.ksize)
     elif args.emil_mode:
         LOG.info("Model: Temporal Sample-Based Denoising [Peters2021]")
-        model = sbmc.Multisteps(data.num_features, data.num_global_features,
+        model = sbmc.RecurrentMultisteps(data.num_features, data.num_global_features,
                                 ksize=args.ksize, splat=not args.gather,
                                 pixel=args.pixel)
         model_params = dict(ksize=args.ksize, gather=args.gather,
@@ -83,6 +85,7 @@ def main(args):
         data, batch_size=args.bs, num_workers=args.num_worker_threads,
         shuffle=False) # Don't shuffle as we want to denoise sequences
 
+
     # Validation set uses a constant spp
     val_dataloader = None
     if args.val_data is not None:
@@ -99,6 +102,10 @@ def main(args):
     LOG.info("Model configuration: {}".format(model_params))
 
     checkpointer = ttools.Checkpointer(args.checkpoint_dir, model, meta=meta)
+    # pre_trained_model=th.load(gharbi, map_location=th.device('cpu'))
+    # print(model.state_dict().keys())
+    # print(type(pre_trained_model['model']))
+    # print(len(model.state_dict().keys()), len(pre_trained_model['model'].keys()))
 
     interface = sbmc.SampleBasedDenoiserInterface(
         model, lr=args.lr, cuda=args.cuda)
@@ -119,6 +126,33 @@ def main(args):
     trainer.add_callback(sbmc.DenoisingDisplayCallback(env=args.env,
                                                        port=args.port,
                                                        win="images"))
+
+    LOG.info("Loading SBMC weight into Temporal model")
+    gharbi = "/home/emil/Documents/Temporal-SBMC-extension/data/pretrained_models/gharbi2019_sbmc/final.pth"
+    pre_trained_model = th.load(gharbi, map_location=th.device('cpu'))
+    new = list(pre_trained_model['model'].items())
+    my_model_kvpair = model.state_dict()
+
+    count=0
+    for key,value in my_model_kvpair.items():
+        layer_name, weights = new[count]
+
+        # Skip the modules with recurrent connections   
+        if 'propagation_02' in layer_name and 'left' in layer_name:
+            print(weights.size(), my_model_kvpair[key].size())
+            count+=1
+            continue
+        print(f"Layer: {layer_name}")
+        my_model_kvpair[key] = weights
+        count+=1
+
+    # Lock all other parameters
+    for name, layer in model.named_modules():
+        # Skip recurrent layers
+        if isinstance(layer, modules.RecurrentConvChain):
+            continue
+        for param in layer.parameters():
+            param.requires_grad = False   
 
     # Launch the training
     LOG.info("Training started, 'Ctrl+C' to abort.")

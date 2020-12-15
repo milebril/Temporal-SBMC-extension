@@ -128,8 +128,17 @@ def denoise(args, input_root="", output_root=""):
     if kpcn_mode:
         LOG.info("Using [Bako2017] denoiser.")
         model = sbmc.KPCN(data.num_features)
+    if args.temporal:
+        LOG.info("Using [Peters2020] denoiser.")
+        model = sbmc.RecurrentMultisteps(data.num_features, data.num_global_features)
     else:
         model = sbmc.Multisteps(data.num_features, data.num_global_features)
+
+    # for parameter in model.parameters():
+    #     print(parameter)
+    # return
+    # print(sum(p.numel() for p in model.parameters() if p.requires_grad))
+    # return
 
     model.train(False)
     device = "cpu"
@@ -149,12 +158,16 @@ def denoise(args, input_root="", output_root=""):
 
     if args.sequence:
         scene_names = [f.path for f in os.scandir(data_root) if f.is_dir()] # Used to get the correct scene name
-        scene_names.reverse()
+        scene_names.sort()
+        # scene_names.reverse()
 
     output_base = args.output
 
     LOG.info("starting the denoiser")
     for scene_id, batch in enumerate(dataloader):
+        if scene_id >= args.frames: #
+            break
+
         for k in batch.keys():
             batch[k] = batch[k].to(device) #Sets the tensors to the correct device type
         scene = os.path.basename(data.scenes[scene_id])
@@ -180,8 +193,12 @@ def denoise(args, input_root="", output_root=""):
         LOG.info("    denoising time {:.1f} ms".format(elapsed))
 
         # Change location if sequence is to be denoised
+        print(scene_id, scene_names[scene_id].split('/')[-1] + ".png")
         if args.sequence:
-            args.output = output_base + scene_names[scene_id].split('/')[-1] + ".png"
+            mode = "sbmc"
+            if args.temporal:
+                mode = "peters"
+            args.output = output_base + "-" + mode + "-" + scene_names[scene_id].split('/')[-1] + ".png"
 
         out_radiance = out_radiance[0, ...].cpu().numpy().transpose([1, 2, 0])
 
@@ -214,9 +231,13 @@ if __name__ == '__main__':
     parser.add_argument("--tile_pad", default=256, help="We process in tiles"
                         " to limit GPU memory usage. This is the padding"
                         " around tiles, for overlapping tiles.")
+    parser.add_argument("--frames", type=int, default=1024, help="Amount of frames to"
+                        "denoise of a given sequence")
 
     # Flag to enable sequence denoising instead of single frame denoising.
     parser.add_argument('--sequence', dest="sequence", action="store_true",
+                        default=False)
+    parser.add_argument('--temporal', dest="temporal", action="store_true",
                         default=False)
 
     args = parser.parse_args()

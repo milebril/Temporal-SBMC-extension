@@ -95,6 +95,8 @@ class GeneratorParams(object):
         self.working_dir = os.getcwd()
         self.output = args.output
 
+        self.frames = args.frames
+
         self.converter = os.path.abspath(args.obj2pbrt_exe)
         self.renderer = os.path.abspath(args.pbrt_exe)
 
@@ -150,27 +152,6 @@ class GeneratorParams(object):
                 if os.path.exists(path):
                     data.append(path)
         return data
-
-
-# class RenderingParams(object):
-#     def __init__(self, args):
-#         super(RenderingParams, self).__init__()
-#         self.spp = args.spp
-#         self.gt_spp = args.gt_spp
-#         self.height = args.height
-#         self.width = args.width
-#         self.path_depth = args.path_depth
-#         self.tile_size = args.tile_size
-#
-#     def __str__(self):
-#         s = "RenderingParams: "
-#         s += "spp = {}; ".format(self.spp)
-#         s += "gt_spp = {}; ".format(self.gt_spp)
-#         s += "height = {}; ".format(self.height)
-#         s += "width = {}; ".format(self.width)
-#         s += "path_depth = {}; ".format(self.path_depth)
-#         s += "tile_size = {}".format(self.tile_size)
-#         return s
 
 
 def create_scene_file(q, render_queue):
@@ -232,7 +213,6 @@ def create_scene_file(q, render_queue):
                     LOG.warning("Sampling another Scene {}".format(gen))
                     if attempt == max_attempts:
                         break
-
             else:
                 while not gen.sample(scn, dst_dir):
                     attempt += 1
@@ -401,6 +381,8 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', type=int, default=1,
                         help="number of scenes to generate before gathering"
                         " the outputs.")
+    parser.add_argument('--frames', type=int, default=-1,
+                        help="number of frames of this scene to generate.")
     parser.add_argument("--verbose", dest="verbose", action="store_true",
                         default=False, help="Use verbose log messages.")
 
@@ -421,7 +403,7 @@ if __name__ == "__main__":
     parser.add_argument('--no-clean', dest="clean", action="store_false",
                         default=True)
     parser.add_argument('--custom', dest="custom", action="store_true",
-                    default=True)
+                    default=False)
                         
 
     main(parser.parse_args())
