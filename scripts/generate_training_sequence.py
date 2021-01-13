@@ -36,7 +36,6 @@ def _validate_render(path):
         return False
     return True
 
-
 def _clean_bin_folder(path):
     """
     Remove all intermediate files and directories used to generate the .bin
@@ -97,15 +96,15 @@ def create_scene_file(q, render_queue):
         LOG.debug("{} directory ready".format(dst_dir))
 
         # Randomize resolution
-        scale = np.random.choice([1, 2, 4, 8])
-        width = rparams["width"]*scale
-        height = rparams["height"]*scale
+        # scale = np.random.choice([1, 2, 4, 8])
+        # width = rparams["width"]*scale
+        # height = rparams["height"]*scale
 
         # Maintain the size constant despite the resolution change
-        rparams["random_crop_w"] = rparams["width"]
-        rparams["random_crop_h"] = rparams["height"]
-        rparams["width"] = width
-        rparams["height"] = height
+        # rparams["random_crop_w"] = rparams["width"]
+        # rparams["random_crop_h"] = rparams["height"]
+        # rparams["width"] = width
+        # rparams["height"] = height
 
         # parameters = {"spp": rparams.spp, "gt_spp": rparams.gt_spp, "width":
         #               width, "height": height, "path_depth":
@@ -120,7 +119,8 @@ def create_scene_file(q, render_queue):
         attempt = 0
         try:
             gen = np.random.choice(params.gen)
-            while not gen.sample_sequence(scn, dst_dir, idx=idx):
+            # while not gen.sample_sequence(scn, dst_dir, idx=idx):
+            while not gen.sample_cornellbox_scene(scn, dst_dir, idx=idx):
                 attempt += 1
                 LOG.warning("Sampling another Scene {}".format(gen))
                 if attempt == max_attempts:
@@ -167,7 +167,7 @@ def create_scene_file(q, render_queue):
             render_queue.put(render_data, block=False)
 
             # Move camera in scene
-            scn.translate_camera([0.001, 0.001, 0])
+            scn.translate_camera([0, 0, -0.01])
 
         q.task_done()
         continue
@@ -181,9 +181,8 @@ def main(args):
 
     LOG.info("Starting job on worker %d of %d with %d threads" %
              (args.worker_id, args.num_workers, args.threads))
-    print(args)
+    
     gen_params = GeneratorParams(args)
-    # render_params = RenderingParams(args)
     render_params = dict(spp=args.spp, gt_spp=args.gt_spp, height=args.height,
                          width=args.width, path_depth=args.path_depth,
                          tile_size=args.tile_size)

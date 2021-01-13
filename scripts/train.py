@@ -76,14 +76,9 @@ def main(args):
         model_params = dict(ksize=args.ksize, gather=args.gather,
                             pixel=args.pixel)
 
-    # Old
-    # dataloader = DataLoader(
-    #     data, batch_size=args.bs, num_workers=args.num_worker_threads,
-    #     shuffle=True)
-
     dataloader = DataLoader(
         data, batch_size=args.bs, num_workers=args.num_worker_threads,
-        shuffle=False) # Don't shuffle as we want to denoise sequences
+        shuffle=False) # Don't shuffle as we want to learn to denoise sequences
 
 
     # Validation set uses a constant spp
@@ -102,13 +97,9 @@ def main(args):
     LOG.info("Model configuration: {}".format(model_params))
 
     checkpointer = ttools.Checkpointer(args.checkpoint_dir, model, meta=meta)
-    # pre_trained_model=th.load(gharbi, map_location=th.device('cpu'))
-    # print(model.state_dict().keys())
-    # print(type(pre_trained_model['model']))
-    # print(len(model.state_dict().keys()), len(pre_trained_model['model'].keys()))
 
     interface = sbmc.SampleBasedDenoiserInterface(
-        model, lr=args.lr, cuda=args.cuda)
+        model, lr=args.lr, cuda=False)
 
     extras, meta = checkpointer.load_latest()
 
@@ -117,49 +108,71 @@ def main(args):
     # Hook-up some callbacks to the training loop
     log_keys = ["loss", "rmse"]
     trainer.add_callback(ttools.callbacks.ProgressBarCallback(log_keys))
-    trainer.add_callback(ttools.callbacks.CheckpointingCallback(checkpointer))
+    trainer.add_callback(ttools.callbacks.CheckpointingCallback(checkpointer,
+                                                                interval=None))
     trainer.add_callback(ttools.callbacks.VisdomLoggingCallback(log_keys,
                                                                 env=args.env,
                                                                 port=args.port,
                                                                 log=True,
-                                                                frequency=100))
+                                                                frequency=25))
     trainer.add_callback(sbmc.DenoisingDisplayCallback(env=args.env,
                                                        port=args.port,
                                                        win="images"))
 
-    LOG.info("Loading SBMC weight into Temporal model")
-    gharbi = "/home/emil/Documents/Temporal-SBMC-extension/data/pretrained_models/gharbi2019_sbmc/final.pth"
-    pre_trained_model = th.load(gharbi, map_location=th.device('cpu'))
-    new = list(pre_trained_model['model'].items())
-    my_model_kvpair = model.state_dict()
+    # if extras is None: 
+    #     LOG.info("Loading SBMC weight into Temporal model")
+    #     gharbi = "/home/emil/Documents/Temporal-SBMC-extension/data/pretrained_models/gharbi2019_sbmc/final.pth"
+    #     pre_trained_model = th.load(gharbi, map_location=th.device('cpu'))
+    #     new = list(pre_trained_model['model'].items())
+    #     my_model_kvpair = model.state_dict()
 
-    count=0
-    for key,value in my_model_kvpair.items():
-        layer_name, weights = new[count]
+    #     count=0
+    #     for key,value in my_model_kvpair.items():
+    #         layer_name, weights = new[count]
 
-        # Skip the modules with recurrent connections   
-        if 'propagation_02' in layer_name and 'left' in layer_name:
-            print(weights.size(), my_model_kvpair[key].size())
-            count+=1
-            continue
-        print(f"Layer: {layer_name}")
-        my_model_kvpair[key] = weights
-        count+=1
+    #         # Skip the modules with recurrent connections   
+    #         if 'propagation_02' in layer_name and 'left' in layer_name:
+    #             count+=1
+    #             continue
+    #         # print(f"Layer: {layer_name}")
+    #         my_model_kvpair[key] = weights
+    #         count+=1
 
-    # Lock all other parameters
-    for name, layer in model.named_modules():
-        # Skip recurrent layers
-        if isinstance(layer, modules.RecurrentConvChain):
-            continue
-        for param in layer.parameters():
-            param.requires_grad = False   
+    #     model.load_state_dict(my_model_kvpair)
+
+    #     # Lock all other parameters
+    #     for name, layer in model.named_modules():
+    #         # Skip recurrent layers
+    #         if isinstance(layer, modules.RecurrentConvChain):
+    #             continue
+    #         for param in layer.parameters():
+    #             param.requires_grad = False   
+
+    open('models/epoch-1.txt', 'w').close()
+    f = open("models/epoch-1.txt", "a")
+    # for p in model.parameters():
+    f.write(str(model.state_dict()))
+    f.close()
 
     # Launch the training
     LOG.info("Training started, 'Ctrl+C' to abort.")
-    # trainer.train(dataloader, num_epochs=args.num_epochs,
-    #               val_dataloader=val_dataloader)
     trainer.train(dataloader, num_epochs=1,
                 val_dataloader=val_dataloader)
+
+    open('models/epoch0.txt', 'w').close()
+    f = open("models/epoch0.txt", "a")
+    # for p in model.parameters():
+    f.write(str(model.state_dict()))
+    f.close()
+
+def get_n_params(model):
+    pp=0
+    for p in list(model.parameters()):
+        nn=1
+        for s in list(p.size()):
+            nn = nn*s
+        pp += nn
+    return pp
 
 if __name__ == "__main__":
     parser = ttools.BasicArgumentParser()

@@ -69,6 +69,7 @@ public:
             xy("xy"), cn("cn"), allvars("allvars");
 
         if(get_target().has_gpu_feature()) {
+            std::cout <<  "GPU\n";
             output
                 .compute_root()
                 // .gpu_tile(x, y, tx, tx, 32, 32)
@@ -76,6 +77,7 @@ public:
                 .fuse(dx, dy, dxdy)
                 .fuse(xy, dxdy, allvars)
                 .fuse(allvars, n, allvars)
+                .parallel(allvars, 8)
                 .gpu_tile(allvars, tx, 1024)
                 ;
         } else {

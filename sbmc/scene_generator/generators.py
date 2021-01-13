@@ -144,12 +144,11 @@ class OutdoorSceneGenerator(SceneGenerator):
         # project along camera direction, reject objects that are too close or
         # too far
         proj = np.ravel(cam_direction.dot(xy))
-        keep = np.logical_and(proj > 0.1*scaled_radius, proj < factor)
-        # keep = np.logical_and(proj > 2, True)
+        keep = np.logical_and(proj > 1, proj < factor)
         xy = xy[:, keep]
 
         # keep max 50 objects
-        nmax = 50
+        nmax = 20
         if xy.shape[1] > nmax:
             xy = xy[:, :nmax]
 
@@ -284,7 +283,6 @@ class OutdoorSceneGenerator(SceneGenerator):
         self._randomize_textures()
 
         # Set Camera 
-
         cam_position = [0, 0, 2]
         cam_target = [0, 0, -1]
         cam_up = [0, 1, 0]
@@ -489,7 +487,6 @@ class OutdoorSceneGenerator(SceneGenerator):
             # Randomize the scale and position
             # scl = radius*np.random.exponential(0.5)*np.ones((3,))
             scl = np.random.exponential(0.5)*np.ones((3,))
-            print(scl)
             # scl = [0.2, 0.2, 0.5]
             z_idx = np.random.randint(0, z_layers)
             altitude = np.random.normal(0.1, 0.2)
@@ -556,6 +553,168 @@ class OutdoorSceneGenerator(SceneGenerator):
 
         return True
 
+    def sample_cornellbox_scene(self, scn, dst_dir, params=None, idx=0):
+        self._log.debug("Sampling Custom Cornellbox")
+        self._randomize_textures()
+
+        # Set Camera 
+        cam_position = [0.0, 0.0, 0.0]
+        cam_target = [0.0, 0.0, -1.0]
+        cam_up = [0.0, 1, 0]
+        cam_fov = np.random.uniform(40, 90) # Random FOV between 40-90
+
+        cam_params = {
+            "position": list(cam_position),
+            "target": list(cam_target),
+            "up": list(cam_up),
+            "fov": cam_fov
+        }
+
+        # do_dof = np.random.choice([True, False])
+        do_dof = False
+        do_mblur = np.random.choice([True, False])
+        do_mblur = False
+
+        if do_mblur:
+            cam_params["shutterclose"] = 1.0
+
+        if do_dof:
+            aperture = _random_aperture()
+        else:
+            aperture = 0.0
+
+        box = True
+        if box:
+            # Ground Plane
+            obj = geometry.GoodPlane(scale=10)
+            xforms.translate(obj, [0, -3, -5])
+            mat = materials.MatteMaterial(id="white-floor", diffuse=[1,1,1])
+            obj.assign_material(mat)    
+
+            scn.shapes.append(obj)
+            scn.materials.append(mat)
+
+            # Ground Plane
+            obj = geometry.GoodPlane(scale=10)
+            xforms.rotate(obj, [0, 1, 0], 180)
+            xforms.translate(obj, [0, 3, -5])
+            mat = materials.MatteMaterial(id="white-ceiling", diffuse=[1,1,1])
+            obj.assign_material(mat)    
+
+            scn.shapes.append(obj)
+            scn.materials.append(mat)
+
+            # Back Plane White
+            obj = geometry.GoodPlane(scale=10)
+            xforms.rotate(obj, [1, 0, 0], 90)
+            xforms.translate(obj, [0, 0, -10])
+            mat = materials.MatteMaterial(id="white-back", diffuse=[1,1,1])
+            obj.assign_material(mat)    
+
+            scn.shapes.append(obj)
+            scn.materials.append(mat)
+
+            # Right Plane Green
+            obj = geometry.GoodPlane(scale=10)
+            xforms.rotate(obj, [1, 0, 0], 90)
+            xforms.rotate(obj, [0, 1, 0], 90)
+            xforms.translate(obj, [3, 0, -5])
+            mat = materials.MatteMaterial(id="green-right", diffuse=[0,1,0])
+            obj.assign_material(mat)    
+
+            scn.shapes.append(obj)
+            scn.materials.append(mat)
+
+            # Left Plane Red
+            obj = geometry.GoodPlane(scale=10)
+            xforms.rotate(obj, [1, 0, 0], 90)
+            xforms.rotate(obj, [0, 1, 0], 90)
+            xforms.translate(obj, [-3, 0, -5])
+            mat = materials.MatteMaterial(id="red-left", diffuse=[1,0,0])
+            obj.assign_material(mat)    
+
+            scn.shapes.append(obj)
+            scn.materials.append(mat)
+        
+        nb_objects = 20
+        focus_at = np.random.randint(0, nb_objects)
+
+        # Sample objects in the cornelbox
+        for o_idx in range(nb_objects):  # Populate the scene
+
+            # If motion blur is activated, maybe blur this object
+            this_mblur = do_mblur and np.random.choice([True, False])
+
+            # Sample a motion vector
+            mvec_r = np.random.uniform(0.00, 1)*2
+            mvec_dir = np.random.uniform(size=(3,))
+            mvec_dir /= np.linalg.norm(mvec_dir)
+            mvec = mvec_dir*mvec_r
+
+            # Fetch a random object from the library
+            dst = os.path.join(dst_dir, f"geometry_scene#{idx}")
+            mdl = np.random.choice(self._models)
+            pbrt_objects = self._converter(mdl, dst)
+
+            # Randomize the scale and position
+            scl = np.random.exponential(0.4)*np.ones((3,))
+            z_idx = np.random.randint(0, 2)
+            altitude = np.random.normal(0.1, 0.2)
+            position = [np.random.uniform(0, 5) - 2.5, np.random.uniform(0, 5) - 2.5, altitude]
+            # [-3, 3] [-3, 3], [-3, -8]
+            position = [np.random.uniform(0, 6) - 3, np.random.uniform(0, 6) - 3, np.random.uniform(0, 5) - 8]
+
+            # Compute the focus distance and update the camera paramters
+            if do_dof and z_idx == 0 and o_idx == focus_at:
+                dist = np.linalg.norm(
+                    np.array(cam_params["position"])-np.array(position))
+                if dist > 0:
+                    cam_params["focaldistance"] = dist
+                    cam_params["lensradius"] = aperture
+
+            # Obj files may contain multiple pieces, add them all
+            for obj in pbrt_objects:
+                geom = geometry.ExternalGeometry(os.path.join(dst_dir, f"geometry_scene#{idx}",
+                                                              obj.path))
+                xforms.rotate(geom, np.random.uniform(size=(3,)),
+                              np.random.uniform(0, 360))
+                xforms.scale(geom, scl)
+                xforms.translate(geom, position)
+
+                # Get a material for this piece
+                material = randomizers.random_material(
+                    id=obj.material.id, textures_list=self._current_textures)
+                scn.materials.append(material)
+
+                if this_mblur:
+                    xforms.translate(geom, mvec, target="end")
+
+                scn.shapes.append(geom)
+
+        # Light Source on ceiling
+        light_geom = geometry.GoodPlane(scale=1)
+        xforms.rotate(light_geom, [1, 0, 0], 180)
+        xforms.translate(light_geom, [0, 2.99, -5])
+        light = lights.AreaLight(light_geom, spectrum=[25, 25, 25])
+        scn.lights.append(light)
+
+        # Attach the camera to the scene
+        scn.camera = Camera(**cam_params)
+
+        self._log.debug("Camera parameters %s. Motion blur? %s DoF? %s",
+                        scn.camera, do_mblur, do_dof)
+        if do_mblur:
+            if (scn.camera.shutteropen != 0.0 or
+                    scn.camera.shutterclose != 1.0):
+                return False
+        if do_dof:
+            if (not scn.camera.lensradius > 0.0 or not
+                    scn.camera.focaldistance > 0.0):
+                return False
+
+        self._log.debug("Generated Custom Outdoor Scene")
+
+        return True
 
 def _random_aperture(min_=0.001, max_=0.05):
     """Sample a camera aperture value, uniformly in log domain).

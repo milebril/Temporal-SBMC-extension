@@ -300,7 +300,7 @@ class RecurrentMultisteps(nn.Module):
         # Splat sample on image
         self.kernel_update = ops.ProgressiveKernelApply(splat=self.splat)
 
-    def forward(self, samples):
+    def forward(self, samples, hidden={}):
         """Forward pass of the model.
 
         Args:
@@ -336,6 +336,13 @@ class RecurrentMultisteps(nn.Module):
 
         # For loop for computing th final Sample embeddings and context features
         # Used later on in the kernel generation
+
+        if not hidden:
+            hidden = {
+                0: None,
+                1: None 
+            }
+
         for step in range(self.nsteps):
             if limit_memory_usage:
                 # Go through the samples one by one to preserve memory for
@@ -377,7 +384,11 @@ class RecurrentMultisteps(nn.Module):
                 nf = self.embedding_width
 
             # Propagate spatially the pixel context
-            propagated = modules["propagation_{:02d}".format(step)](reduced)
+            if isinstance(modules["propagation_{:02d}".format(step)], ops.RecurrentAutoencoder):
+                propagated, hidden_result = modules["propagation_{:02d}".format(step)](reduced, hidden)
+                hidden = hidden_result
+            else:
+                propagated = modules["propagation_{:02d}".format(step)](reduced)
 
             if limit_memory_usage:
                 del reduced
@@ -410,7 +421,7 @@ class RecurrentMultisteps(nn.Module):
         # Remove the invalid boundary data
         crop = (self.ksize - 1) // 2
         output = output[..., crop:-crop, crop:-crop]
-        return {"radiance": output}
+        return {"radiance": output, "hidden": hidden}
 
 class KPCN(nn.Module):
     """Re-implementation of [Bako 2017].

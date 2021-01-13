@@ -63,7 +63,6 @@ std::map<std::string, Func> kernel_weighting(
     return func_map;
 }
 
-
 template <typename InputBuffer, typename OutputBuffer>
 std::map<std::string, Func> kernel_weighting_grad(
         const InputBuffer &data,

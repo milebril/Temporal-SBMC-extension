@@ -52,7 +52,6 @@ class ConvChain(nn.Module):
                  pad=True, normalize=False, normalization_type="batch",
                  output_type="linear", activation="relu", weight_norm=True):
         super(ConvChain, self).__init__()
-
         if depth <= 0:
             LOG.error("ConvChain should have non-negative depth.")
             raise ValueError("negative network depth.")
@@ -422,6 +421,7 @@ class ProgressiveKernelApply(nn.Module):
         k = int(np.sqrt(k2))
 
         kernels = kernels.view(bs, k, k, h, w)
+
         # Convert to the gather representation if we have splat kernels
         if self.splat:
             kernels = funcs.Scatter2Gather.apply(kernels)
@@ -447,6 +447,7 @@ class ProgressiveKernelApply(nn.Module):
             sum_r, sum_w = funcs.KernelWeighting.apply(
                 data.contiguous(), kernels.contiguous())
             sum_w = sum_w.unsqueeze(1)
+
         else:
             # Update previous weights's max and normalization
             new_max = th.max(kmax, max_w)
@@ -498,7 +499,6 @@ class RecurrentConvChain(nn.Module):
                  output_type="linear", activation="relu", weight_norm=True):
         super(RecurrentConvChain, self).__init__()
 
-        self.hidden_size = nhidden
         self.noutputs = noutputs
 
         if depth <= 0:
@@ -517,7 +517,7 @@ class RecurrentConvChain(nn.Module):
             else:
                 _in = width
             layers.append(
-                ConvChain._ConvBNRelu(_in, ksize, width, normalize=normalize,
+                RecurrentConvChain._ConvBNRelu(_in, ksize, width, normalize=normalize,
                                       normalization_type=normalization_type,
                                       padding=padding, stride=stride,
                                       activation=activation,
@@ -567,23 +567,89 @@ class RecurrentConvChain(nn.Module):
         else:
             raise ValueError("Unknon output type '{}'".format(output_type))
 
-        self.hidden_tensor = None
+        # self.hidden_tensor = None
 
-    def forward(self, x):
-        if type(self.hidden_tensor) == type(None):
-            self.hidden_tensor = self.init_hidden(x)
+    def forward(self, x, hidden=None):
+        if type(hidden) == type(None):
+            hidden = self.init_hidden(x)
         for idx, m in enumerate(self.children()):
             if idx == 0:
-                x = m(th.cat([x, self.hidden_tensor], 1))
+                x = m(th.cat([x, hidden], 1))
             else:
                 x = m(x)
 
-        self.hidden_tensor = x
         return x
     
     def init_hidden(self, tensor):
         dim, nf, h, w = tensor.shape
         return th.zeros((dim, self.noutputs, h, w))
+    
+    class _ConvBNRelu(nn.Module):
+        """Helper class that implements a simple Conv-(Norm)-Activation group.
+
+        Args:
+            ninputs(int): number of input channels.
+            ksize(int): size of all the convolution kernels.
+            noutputs(int): number of output channels.
+            stride(int): stride of the convolution.
+            pading(int): amount of 0-padding.
+            normalize(bool): applies normalization if True.
+            normalization_type(str): either batch or instance.
+            activation(str): one of relu, leaky_relu, tanh, elu.
+            weight_norm(bool): if True applies weight normalization.
+        """
+        def __init__(self, ninputs, ksize, noutputs, normalize=False,
+                     normalization_type="batch", stride=1, padding=0,
+                     activation="relu", weight_norm=True):
+            super(RecurrentConvChain._ConvBNRelu, self).__init__()
+
+            if activation == "relu":
+                act_fn = nn.ReLU
+            elif activation == "leaky_relu":
+                act_fn = nn.LeakyReLU
+            elif activation == "tanh":
+                act_fn = nn.Tanh
+            elif activation == "elu":
+                act_fn = nn.ELU
+            else:
+                LOG.error("Incorrect activation %s", activation)
+                raise ValueError("activation should be one of: "
+                                 "relu, leaky_relu, tanh, elu")
+
+            if normalize:
+                print("nrm", normalization_type)
+                conv = nn.Conv2d(ninputs, noutputs, ksize,
+                                 stride=stride, padding=padding, bias=False)
+                if normalization_type == "batch":
+                    nrm = nn.BatchNorm2d(noutputs)
+                elif normalization_type == "instance":
+                    nrm = nn.InstanceNorm2D(noutputs)
+                else:
+                    LOG.error("Incorrect normalization %s", normalization_type)
+                    raise ValueError(
+                        "Unkown normalization type {}".format(
+                            normalization_type))
+                nrm.bias.data.zero_()
+                nrm.weight.data.fill_(1.0)
+                self.layer = nn.Sequential(conv, nrm, act_fn())
+            else:
+                conv = nn.Conv2d(ninputs, noutputs, ksize,
+                                 stride=stride, padding=padding)
+                if weight_norm:
+                    conv = nn.utils.weight_norm(conv)
+                conv.bias.data.zero_()
+                self.layer = nn.Sequential(conv, act_fn())
+
+            if activation == "elu":
+                nn.init.xavier_uniform_(
+                    conv.weight.data, nn.init.calculate_gain("relu"))
+            else:
+                nn.init.xavier_uniform_(
+                    conv.weight.data, nn.init.calculate_gain(activation))
+
+        def forward(self, x):
+            out = self.layer(x)
+            return out
 
 class RecurrentAutoencoder(nn.Module):
     """A U-net style recurrent autoencoder.
@@ -632,15 +698,12 @@ class RecurrentAutoencoder(nn.Module):
                 ksize=ksize, width=w, num_convs=num_convs,
                 output_type=o_type, normalize=normalize,
                 normalization_type=normalization_type,
-                activation=activation, pooling=pooling)
+                activation=activation, pooling=pooling, depth=lvl)
 
         self.add_module("net", next_level)
 
-    def forward(self, x):
-        return self.net(x)
-
-    def init_hidden(self):
-        return torch.zeros(1, self.hidden_size)
+    def forward(self, x, hidden={}):
+        return self.net(x, hidden)
 
     class _Level(nn.Module):
         """One scale of the autoencoder processor.
@@ -666,10 +729,11 @@ class RecurrentAutoencoder(nn.Module):
                      num_us=None, ksize=3, width=64, num_convs=2,
                      output_type="linear", normalize=True,
                      normalization_type="batch", pooling="max",
-                     activation="relu"):
+                     activation="relu", depth=0):
             super(RecurrentAutoencoder._Level, self).__init__()
 
             self.is_last = (next_level is None)
+            self.depth = depth
 
             if self.is_last:
                 self.left = ConvChain(
@@ -700,13 +764,19 @@ class RecurrentAutoencoder(nn.Module):
                     normalization_type=normalization_type,
                     output_type=output_type)
 
-        def forward(self, x):
-            left = self.left(x)
+        def forward(self, x, hidden={}):
+            if isinstance(self.left, RecurrentConvChain):
+                left = self.left(x, hidden[self.depth])
+                hidden[self.depth] = left # Save the output as the hidden state
+            else:
+                left = self.left(x)
             if self.is_last:
-                return left
+                return left, hidden
 
             ds = self.downsample(left)
-            next_level = self.next_level(ds)
+            next_level, new_hidden = self.next_level(ds, hidden)
+            hidden = new_hidden
+
             us = F.interpolate(
                 next_level, size=left.shape[-2:], mode='bilinear',
                 align_corners=False)
@@ -714,4 +784,5 @@ class RecurrentAutoencoder(nn.Module):
             # Concat skip connection
             concat = th.cat([us, left], 1)
             output = self.right(concat)
-            return output
+
+            return output, hidden

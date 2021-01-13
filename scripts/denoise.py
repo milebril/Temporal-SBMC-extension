@@ -143,6 +143,7 @@ def denoise(args, input_root="", output_root=""):
     model.train(False)
     device = "cpu"
     cuda = th.cuda.is_available()
+    cuda = False
     if cuda:
         LOG.info("Using CUDA")
         model.cuda()
@@ -171,7 +172,7 @@ def denoise(args, input_root="", output_root=""):
         for k in batch.keys():
             batch[k] = batch[k].to(device) #Sets the tensors to the correct device type
         scene = os.path.basename(data.scenes[scene_id])
-        LOG.info("  scene {}".format(scene))
+        LOG.info("Denoising scene: {}".format(scene))
         tile_sz = args.tile_size
         tile_pad = args.tile_pad
         batch_parts = _split_tiles(batch, max_sz=tile_sz, pad=tile_pad)
@@ -183,6 +184,7 @@ def denoise(args, input_root="", output_root=""):
         for part, start_y, end_y, start_x, end_x, pad_ in batch_parts:
             with th.no_grad():
                 out_ = model(part)
+                print("MODE")
                 out_ = _pad(part, out_["radiance"], kpcn_mode)
                 out_ = out_[..., pad_[0]:out_.shape[-2] -
                             pad_[1], pad_[2]:out_.shape[-1]-pad_[3]]

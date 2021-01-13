@@ -26,7 +26,6 @@ try:  # TODO(mgharbi): this is a hack so that Sphinx can compile the doc
 except Exception as e:
     LOG.error("Halide extension not loaded!\n %s", e)
 
-
 def _is_cuda(*args):
     """Returns True is any of the argument is on a CUDA device, False
     otherwise."""
@@ -34,7 +33,6 @@ def _is_cuda(*args):
         if arg.is_cuda:
             return True
     return False
-
 
 class Scatter2Gather(th.autograd.Function):
     """Converts (transposes) scatter kernels into gather kernels.
@@ -53,10 +51,18 @@ class Scatter2Gather(th.autograd.Function):
         output = data.new()
         output.resize_as_(data)
         assert len(data.shape) == 5, "data should be 5d"
+        
+        # NO CUDA FOR NOW
         if _is_cuda(data):
             ops.scatter2gather_cuda_float32(data, output)
         else:
             ops.scatter2gather_cpu_float32(data, output)
+
+        # data.to('cpu')
+        # output.to('cpu')
+        # ops.scatter2gather_cpu_float32(data, output)
+        # output.to('cuda')
+
         return output
 
     @staticmethod
@@ -64,10 +70,16 @@ class Scatter2Gather(th.autograd.Function):
         d_data = d_output.new()
         d_data.resize_as_(d_output)
         _, kh, kw, _, _ = d_data.shape
+
         if _is_cuda(d_output):
             ops.scatter2gather_cuda_float32(d_output, d_data)
         else:
             ops.scatter2gather_cpu_float32(d_output, d_data)
+
+        # d_output.to('cpu')
+        # d_data.to('cpu')
+        # ops.scatter2gather_cpu_float32(d_output, d_data)
+        # d_data.to('cuda')
         return d_data
 
 
@@ -92,10 +104,20 @@ class KernelWeighting(th.autograd.Function):
         sum_w = data.new()
         output.resize_as_(data)
         sum_w.resize_(bs, h, w)
+
         if _is_cuda(data, weights):
             ops.kernel_weighting_cuda_float32(data, weights, output, sum_w)
         else:
             ops.kernel_weighting_cpu_float32(data, weights, output, sum_w)
+        
+        # data.to('cpu')
+        # weights.to('cpu')
+        # output.to('cpu')
+        # sum_w.to('cpu')
+        # ops.kernel_weighting_cpu_float32(data, weights, output, sum_w)
+        # output.to('cuda')
+        # sum_w.to('cuda')
+
         ctx.save_for_backward(data, weights, sum_w)
         return output, sum_w
 
@@ -106,10 +128,24 @@ class KernelWeighting(th.autograd.Function):
         d_weights = weights.new()
         d_data.resize_as_(data)
         d_weights.resize_as_(weights)
+
         if _is_cuda(d_output, d_sum_w):
             ops.kernel_weighting_grad_cuda_float32(
                 data, weights, sum_w, d_output, d_sum_w, d_data, d_weights)
         else:
             ops.kernel_weighting_grad_cpu_float32(
                 data, weights, sum_w, d_output, d_sum_w, d_data, d_weights)
+
+        # data.to('cpu')
+        # weights.to('cpu')
+        # sum_w.to('cpu')
+        # d_output.to('cpu')
+        # d_sum_w.to('cpu')
+        # d_data.to('cpu')
+        # d_weights.to('cpu')
+        # ops.kernel_weighting_grad_cpu_float32(
+        #     data, weights, sum_w, d_output, d_sum_w, d_data, d_weights)
+        # d_data.to('cuda')
+        # d_weights.to('cuda')
+
         return d_data, d_weights

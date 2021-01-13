@@ -27,7 +27,7 @@ nvidia_docker: check_docker_version
 # To facilitate environment setup, build and use this dockerfile
 # !! Requires NVIDIA's docker extension !!
 docker_build:
-	@docker build -f dockerfiles/cuda-sbmc.dockerfile -t sbmc_cuda .
+	@docker build -f dockerfiles/cuda-sbmc.dockerfile -t sbmc_cuda_new .
 
 # To facilitate environment setup, build and use this dockerfile
 # !! Requires NVIDIA's docker extension !!
@@ -50,7 +50,7 @@ docker_run:  docker_build $(OUTPUT) $(DATA)
 		-v $(DATA):/sbmc_app/data \
 		--ipc=host \
 		-p 2001:2001 \
-		-it sbmc_cuda
+		-it sbmc_cuda_new
 
 docker_run_cpu:  docker_build_cpu $(OUTPUT) $(DATA)
 	@docker run --name sbmc_cpu_app --rm \
@@ -172,16 +172,16 @@ generate_sequence_and_denoise:
 		$(OBJ2PBRT) \
 		$(DATA)/demo/scenegen_assets \
 		$(OUTPUT)/emil/training_sequence \
-		--count 1 --spp 4 --width 256 --height 256 --no-clean
+		--count 1 --frames 1 --spp 512 --gt_spp 4 --width 256 --height 256 --no-clean 
 	@cd $(OUTPUT)/emil/training_sequence && find . -name "*.bin" > filelist.txt
 	@python scripts/visualize_dataset.py \
 		$(OUTPUT)/emil/training_sequence/render_samples_seq \
 		$(OUTPUT)/emil/dataviz_sequence --spp 4
-	# @python scripts/denoise.py \
-	# 	--input $(OUTPUT)/emil/training_sequence/render_samples_seq \
-	# 	--output $(OUTPUT)/emil/dataviz_sequence/denoised/ \
-	# 	--spp 4 --sequence \
-	# 	--checkpoint $(OUTPUT)/emil/training/	
+	@python scripts/denoise.py \
+		--input $(OUTPUT)/emil/training_sequence/render_samples_seq \
+		--output $(OUTPUT)/emil/dataviz_sequence/denoised/ \
+		--spp 4 --sequence \
+		--checkpoint $(DATA)/pretrained_models/gharbi2019_sbmc
 
 generate_training_sequence:
 	@rm -rf $(OUTPUT)/emil/training_sequence
@@ -190,41 +190,66 @@ generate_training_sequence:
 		$(OBJ2PBRT) \
 		$(DATA)/demo/scenegen_assets \
 		$(OUTPUT)/emil/training_sequence \
-		--count 10 --frames 1 --spp 4 --gt_spp 4 --width 128 --height 128 --no-clean
-	@cd $(OUTPUT)/emil/training_sequence && find . -name "*.bin" > filelist.txt
+		--count 5 --frames 5 --spp 4 --gt_spp 512 --width 128 --height 128 --no-clean
+	@cd $(OUTPUT)/emil/training_sequence && find . -name "*.bin" | sort > filelist.txt
+
+generate_validation_sequence:
+	@rm -rf $(OUTPUT)/emil/validation_sequence
+	@python scripts/generate_training_sequence.py \
+		$(PBRT) \
+		$(OBJ2PBRT) \
+		$(DATA)/demo/scenegen_assets \
+		$(OUTPUT)/emil/validation_sequence \
+		--count 1 --frames 5 --spp 4 --gt_spp 512 --width 512 --height 512 --no-clean
+	@cd $(OUTPUT)/emil/validation_sequence && find . -name "*.bin" | sort > filelist.txt
 
 visualize_sequence:
 	@python scripts/visualize_dataset.py \
 		$(OUTPUT)/emil/training_sequence/render_samples_seq \
 		$(OUTPUT)/emil/dataviz_sequence --spp 4
+		# $(OUTPUT)/emil/validation_sequence/render_samples_seq \
+		# $(OUTPUT)/emil/dataviz_val_sequence --spp 4
 
 denoise_sequence:
 	@python scripts/denoise.py \
-		--input $(OUTPUT)/emil/training_sequence/render_samples_seq \
-		--output $(OUTPUT)/emil/dataviz_sequence/denoised/ \
+		--input $(OUTPUT)/emil/validation_sequence/render_samples_seq \
+		--output $(OUTPUT)/emil/dataviz_val_sequence/denoised/ \
 		--spp 4 --sequence \
 		--checkpoint $(DATA)/pretrained_models/gharbi2019_sbmc
 
+		# --input $(OUTPUT)/emil/training_sequence/render_samples_seq \
+		# --output $(OUTPUT)/emil/dataviz_sequence/denoised/ \
+
 denoise_sequence_peters:
 	@python scripts/denoise.py \
-		--input $(OUTPUT)/emil/training_sequence/render_samples_seq \
-		--output $(OUTPUT)/emil/dataviz_sequence/denoised/ \
-		--spp 4 --frames 8 --sequence --temporal\
+		--input $(OUTPUT)/emil/validation_sequence/render_samples_seq \
+		--output $(OUTPUT)/emil/dataviz_val_sequence/denoised/ \
+		--spp 4 --sequence --temporal \
 		--checkpoint $(OUTPUT)/emil/training/
 
+		# --input $(OUTPUT)/emil/training_sequence/render_samples_seq \
+		# --output $(OUTPUT)/emil/dataviz_sequence/denoised/ \
 
 train_emil:
 	@python scripts/train.py \
 		--checkpoint_dir $(OUTPUT)/emil/training \
 		--data $(OUTPUT)/emil/training_sequence/filelist.txt \
-		--env sbmc_ours --port 2001 --bs 1 --constant_spp --emil_mode\
+		--env sbmc_ours --port 2001 --bs 1 --emil_mode --constant_spp\
+		--spp 4 --debug
+
+train_emil_new:
+	@python scripts/custom_training.py \
+		--checkpoint_dir $(OUTPUT)/emil/training \
+		--data $(OUTPUT)/emil/training_sequence/filelist.txt \
+		--env sbmc_ours --port 2001 --bs 1 --emil_mode --constant_spp\
+		--spp 4 --debug
+
+demo/train:
+	@python scripts/train.py \
+		--checkpoint_dir $(OUTPUT)/demo/training \
+		--data $(OUTPUT)/emil/training_sequence/filelist.txt \
+		--env sbmc_ours --port 2001 --bs 1 \
 		--spp 4
-
-	#--checkpoint_dir $(OUTPUT)/emil/training \
-	#--checkpoint_dir $(DATA)/pretrained_models/gharbi2019_sbmc \
-	#--emil_mode
-
-
 # -----------------------------------------------------------------------------
 
 # The rest of this Makefiles demonstrates how to use the SBMC API and entry
@@ -311,12 +336,12 @@ demo/comparisons: demo/render_samples pretrained_models demo_data
 		$(KALANTARI2015)/pretrained/FeatureNorm.dat
 
 # This demonstrates how to train a new model
-demo/train: demo/generate_scenes
-	@python scripts/train.py \
-		--checkpoint_dir $(OUTPUT)/demo/training \
-		--data $(OUTPUT)/demo/training_scenes/filelist.txt \
-		--env sbmc_ours --port 2001 --bs 1 \
-		--spp 4
+# demo/train: demo/generate_scenes
+# 	@python scripts/train.py \
+# 		--checkpoint_dir $(OUTPUT)/demo/training \
+# 		--data $(OUTPUT)/demo/training_scenes/filelist.txt \
+# 		--env sbmc_ours --port 2001 --bs 1 \
+# 		--spp 4
 
 # This demonstrates how to train a baseline model (from [Bako 2017])
 demo/train_kpcn: demo/generate_scenes
