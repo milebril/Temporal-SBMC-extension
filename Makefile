@@ -200,15 +200,15 @@ generate_validation_sequence:
 		$(OBJ2PBRT) \
 		$(DATA)/demo/scenegen_assets \
 		$(OUTPUT)/emil/validation_sequence \
-		--count 1 --frames 5 --spp 4 --gt_spp 512 --width 512 --height 512 --no-clean
+		--count 2 --frames 1 --spp 4 --gt_spp 512 --width 256 --height 256 --no-clean
 	@cd $(OUTPUT)/emil/validation_sequence && find . -name "*.bin" | sort > filelist.txt
 
 visualize_sequence:
 	@python scripts/visualize_dataset.py \
-		$(OUTPUT)/emil/training_sequence/render_samples_seq \
-		$(OUTPUT)/emil/dataviz_sequence --spp 4
-		# $(OUTPUT)/emil/validation_sequence/render_samples_seq \
-		# $(OUTPUT)/emil/dataviz_val_sequence --spp 4
+		$(OUTPUT)/emil/validation_sequence/render_samples_seq \
+		$(OUTPUT)/emil/dataviz_val_sequence --spp 4
+		# $(OUTPUT)/emil/training_sequence/render_samples_seq \
+		# $(OUTPUT)/emil/dataviz_sequence --spp 4
 
 denoise_sequence:
 	@python scripts/denoise.py \

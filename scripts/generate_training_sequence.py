@@ -77,7 +77,7 @@ def create_scene_file(q, render_queue):
         curr_frame = 0
 
         LOG.debug("Creating scene {}, frame {}".format(idx, curr_frame))
-        np.random.seed(idx)
+        np.random.seed(data['random'])
 
         # Create container
         dirname = "render_samples_seq"
@@ -207,6 +207,7 @@ def main(args):
                 "render_params": render_params,
                 "verbose": args.verbose,
                 "clean": args.clean,
+                "random": np.random.randint(0, 2147000000)
             }
             if args.count > 0 and count == args.count:
                 break

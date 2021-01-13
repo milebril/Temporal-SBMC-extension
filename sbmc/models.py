@@ -277,16 +277,22 @@ class RecurrentMultisteps(nn.Module):
                                           pad=False))
 
             # U-net implements the pixel spatial propagation step
-            if step == self.nsteps-1:
-                self.add_module("propagation_{:02d}".format(step), ops.RecurrentAutoencoder(
-                    self.embedding_width, width, num_levels=3, increase_factor=2.0,
-                    num_convs=3, width=width, ksize=3, output_type="leaky_relu",
-                    pooling="max"))
-            else:
-                self.add_module("propagation_{:02d}".format(step), ops.Autoencoder(
-                    self.embedding_width, width, num_levels=3, increase_factor=2.0,
-                    num_convs=3, width=width, ksize=3, output_type="leaky_relu",
-                    pooling="max"))
+            # if step == self.nsteps-1:
+            #     self.add_module("propagation_{:02d}".format(step), ops.RecurrentAutoencoder(
+            #         self.embedding_width, width, num_levels=3, increase_factor=2.0,
+            #         num_convs=3, width=width, ksize=3, output_type="leaky_relu",
+            #         pooling="max"))
+            # else:
+            #     self.add_module("propagation_{:02d}".format(step), ops.Autoencoder(
+            #         self.embedding_width, width, num_levels=3, increase_factor=2.0,
+            #         num_convs=3, width=width, ksize=3, output_type="leaky_relu",
+            #         pooling="max"))
+
+            # Adding recurrent connections to every step
+            self.add_module("propagation_{:02d}".format(step), ops.RecurrentAutoencoder(
+                self.embedding_width, width, num_levels=3, increase_factor=2.0,
+                num_convs=3, width=width, ksize=3, output_type="leaky_relu",
+                pooling="max"))
 
         # Final regression for the per-sample kernel (also 1x1 convs)
         # Generate the Kernel used for splatting
@@ -300,7 +306,7 @@ class RecurrentMultisteps(nn.Module):
         # Splat sample on image
         self.kernel_update = ops.ProgressiveKernelApply(splat=self.splat)
 
-    def forward(self, samples, hidden={}):
+    def forward(self, samples):
         """Forward pass of the model.
 
         Args:
@@ -336,12 +342,6 @@ class RecurrentMultisteps(nn.Module):
 
         # For loop for computing th final Sample embeddings and context features
         # Used later on in the kernel generation
-
-        if not hidden:
-            hidden = {
-                0: None,
-                1: None 
-            }
 
         for step in range(self.nsteps):
             if limit_memory_usage:
@@ -385,8 +385,7 @@ class RecurrentMultisteps(nn.Module):
 
             # Propagate spatially the pixel context
             if isinstance(modules["propagation_{:02d}".format(step)], ops.RecurrentAutoencoder):
-                propagated, hidden_result = modules["propagation_{:02d}".format(step)](reduced, hidden)
-                hidden = hidden_result
+                propagated = modules["propagation_{:02d}".format(step)](reduced)
             else:
                 propagated = modules["propagation_{:02d}".format(step)](reduced)
 
@@ -421,7 +420,7 @@ class RecurrentMultisteps(nn.Module):
         # Remove the invalid boundary data
         crop = (self.ksize - 1) // 2
         output = output[..., crop:-crop, crop:-crop]
-        return {"radiance": output, "hidden": hidden}
+        return {"radiance": output}
 
 class KPCN(nn.Module):
     """Re-implementation of [Bako 2017].

@@ -567,17 +567,19 @@ class RecurrentConvChain(nn.Module):
         else:
             raise ValueError("Unknon output type '{}'".format(output_type))
 
-        # self.hidden_tensor = None
+        self.hidden_tensor = None
 
-    def forward(self, x, hidden=None):
-        if type(hidden) == type(None):
-            hidden = self.init_hidden(x)
+    def forward(self, x):
+        if type(self.hidden_tensor) == type(None):
+            self.hidden_tensor = self.init_hidden(x)
         for idx, m in enumerate(self.children()):
             if idx == 0:
-                x = m(th.cat([x, hidden], 1))
+                x = m(th.cat([x, self.hidden_tensor], 1))
             else:
                 x = m(x)
-
+                
+        self.hidden_tensor = x
+        self.hidden_tensor.detach_()
         return x
     
     def init_hidden(self, tensor):
@@ -702,8 +704,8 @@ class RecurrentAutoencoder(nn.Module):
 
         self.add_module("net", next_level)
 
-    def forward(self, x, hidden={}):
-        return self.net(x, hidden)
+    def forward(self, x):
+        return self.net(x)
 
     class _Level(nn.Module):
         """One scale of the autoencoder processor.
@@ -764,18 +766,13 @@ class RecurrentAutoencoder(nn.Module):
                     normalization_type=normalization_type,
                     output_type=output_type)
 
-        def forward(self, x, hidden={}):
-            if isinstance(self.left, RecurrentConvChain):
-                left = self.left(x, hidden[self.depth])
-                hidden[self.depth] = left # Save the output as the hidden state
-            else:
-                left = self.left(x)
+        def forward(self, x):
+            left = self.left(x)
             if self.is_last:
-                return left, hidden
+                return left
 
             ds = self.downsample(left)
-            next_level, new_hidden = self.next_level(ds, hidden)
-            hidden = new_hidden
+            next_level = self.next_level(ds)
 
             us = F.interpolate(
                 next_level, size=left.shape[-2:], mode='bilinear',
@@ -785,4 +782,4 @@ class RecurrentAutoencoder(nn.Module):
             concat = th.cat([us, left], 1)
             output = self.right(concat)
 
-            return output, hidden
+            return output

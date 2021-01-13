@@ -22,6 +22,7 @@ import numpy as np
 import torch as th
 import os
 import pyexr
+import skimage.io as skio
 
 from torch.utils.data import DataLoader
 
@@ -33,39 +34,6 @@ import sbmc
 
 
 LOG = ttools.get_logger(__name__)
-
-def train(dataloader, num_epochs, interface, val_dataloader=None):
-    
-    epoch = 0
-    while num_epochs is None or epoch < num_epochs:
-        LOG.info(f"Started epoch {epoch}")
-        for batch_idx, batch in enumerate(dataloader):
-            # Start a batch
-            fwd_result, hidden_result = interface.forward(batch) # One Pass through the model with a batch
-            bwd_result = interface.backward(batch, fwd_result) # Backward pass of the result
-        LOG.info(f"Ended epoch {epoch}")
-
-        # Validate
-        # if val_dataloader:
-        #     with th.no_grad():
-        #         val_data = self.__validation_start(
-        #             val_dataloader)  # data interface adapter
-        #         for batch_idx, batch in enumerate(val_dataloader):
-        #             if not self._keep_running:
-        #                 self._stop()
-        #                 return
-        #             fwd_result = self.__forward_step(batch)
-        #             val_data = self.__validation_update(
-        #                 batch, fwd_result, val_data)
-        #         self.__validation_end(val_data)
-
-        epoch += 1
-
-    stop()
-
-def stop():
-    pass
-
 
 def main(args):
     # Fix seed
@@ -137,25 +105,27 @@ def main(args):
         temp = th.load(model_location, map_location=th.device('cpu'))
         model.load_state_dict(temp['model'])
     else:
-        LOG.info("Loading SBMC weights into Temporal model")
-        gharbi = "/home/emil/Documents/Temporal-SBMC-extension/data/pretrained_models/gharbi2019_sbmc/final.pth"
-        pre_trained_model = th.load(gharbi, map_location=th.device('cpu'))
-        new = list(pre_trained_model['model'].items())
-        my_model_kvpair = model.state_dict()
+        pass
+    #     LOG.info("Loading SBMC weights into Temporal model")
+    #     gharbi = "/home/emil/Documents/Temporal-SBMC-extension/data/pretrained_models/gharbi2019_sbmc/final.pth"
+    #     pre_trained_model = th.load(gharbi, map_location=th.device('cpu'))
+    #     new = list(pre_trained_model['model'].items())
+    #     my_model_kvpair = model.state_dict()
 
-        count=0
-        for key,value in my_model_kvpair.items():
-            layer_name, weights = new[count]
+    #     count=0
+    #     for key,value in my_model_kvpair.items():
+    #         layer_name, weights = new[count]
 
-            # Skip the modules with recurrent connections   
-            if 'propagation_02' in layer_name and 'left' in layer_name:
-                count+=1
-                continue
-            # print(f"Layer: {layer_name}")
-            my_model_kvpair[key] = weights
-            count+=1
+    #         # Skip the modules with recurrent connections   
+    #         # if 'propagation_02' in layer_name and 'left' in layer_name:
+    #         if 'propagation' in layer_name:
+    #             count+=1
+    #             continue
+    #         # print(f"Layer: {layer_name}")
+    #         my_model_kvpair[key] = weights
+    #         count+=1
 
-        model.load_state_dict(my_model_kvpair)
+    #     model.load_state_dict(my_model_kvpair)
 
     # Lock all other parameters
     # for name, layer in model.named_modules():
@@ -169,24 +139,28 @@ def main(args):
     interface = sbmc.SampleBasedDenoiserInterface(
         model, lr=args.lr, cuda=False)
 
-    num_epochs = 2
+    num_epochs = 5
     epoch = 0
+
+    # Save a denoising of initialised network
+    it = iter(dataloader)
+    head = next(it)
+    out = interface.forward(head)['radiance']
+    out = out[0, ...].cpu().detach().numpy().transpose([1, 2, 0])
+
+    os.makedirs(args.checkpoint_dir, exist_ok=True)
+    outputfile = os.path.join(args.checkpoint_dir, f'base.png')
+    pyexr.write(outputfile, out)
+    
+    png = outputfile.replace(".exr", ".png")
+    skio.imsave(png, (np.clip(out, 0, 1)*255).astype(np.uint8))
 
     while num_epochs is None or epoch < num_epochs:
         nbatches = len(dataloader)
 
-        # Reset hidden-state at the start of an epoch
-        hidden_state = {
-            0: None,
-            1: None
-        }
-
         for batch_idx, batch in enumerate(dataloader):
             # Start a batch
-            fwd_result = interface.forward(batch, hidden=hidden_state) # One Pass through the model with a batch
-            hidden_state = fwd_result["hidden"]
-            hidden_state[0].detach_()
-            hidden_state[1].detach_()
+            fwd_result = interface.forward(batch) # One Pass through the model with a batch
             bwd_result = interface.backward(batch, fwd_result) # Backward pass of the result
             printProgressBar(batch_idx+1, nbatches, prefix=f'Epoch {epoch}', suffix=f'{batch_idx+1}/{nbatches} loss: {round(bwd_result["loss"], 3)} RMSE: {round(bwd_result["rmse"],3)}') # Print out progress after batch is finished
 
@@ -196,9 +170,10 @@ def main(args):
         
         # Save a denoised image per epoch
         out = fwd_result['radiance']
+        out = out[0, ...].cpu().detach().numpy().transpose([1, 2, 0])
 
         os.makedirs(args.checkpoint_dir, exist_ok=True)
-        outputfile = os.path.join(args.checkpoint_dir, f'epoch_{epoch}')
+        outputfile = os.path.join(args.checkpoint_dir, f'epoch_{epoch}.png')
         pyexr.write(outputfile, out)
         
         png = outputfile.replace(".exr", ".png")

@@ -59,7 +59,7 @@ class SampleBasedDenoiserInterface(ttools.ModelInterface):
 
         self.optimizer = th.optim.Adam(self.model.parameters(), lr=lr)
 
-    def forward(self, batch, hidden={}):
+    def forward(self, batch):
         """Runs a forward pass of the model.
 
         Args:
@@ -72,7 +72,7 @@ class SampleBasedDenoiserInterface(ttools.ModelInterface):
             if not batch[k].__class__ == th.Tensor:
                 continue
             batch[k] = batch[k].to(self.device)
-        output = self.model(batch, hidden)
+        output = self.model(batch)
         return output
 
     def backward(self, batch, fwd):
@@ -82,8 +82,6 @@ class SampleBasedDenoiserInterface(ttools.ModelInterface):
         tgt = crop_like(batch["target_image"], out)  # make sure sizes match
 
         loss = self.loss_fn(out, tgt)
-        # loss.requires_grad = True
-        # loss.backward(retain_graph=True)
         loss.backward()
 
         # Couple checks to pick up on outliers in the data.
