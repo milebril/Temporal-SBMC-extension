@@ -53,10 +53,11 @@ class Scatter2Gather(th.autograd.Function):
         assert len(data.shape) == 5, "data should be 5d"
         
         # NO CUDA FOR NOW
-        if _is_cuda(data):
-            ops.scatter2gather_cuda_float32(data, output)
-        else:
-            ops.scatter2gather_cpu_float32(data, output)
+        # if _is_cuda(data):
+        #     ops.scatter2gather_cuda_float32(data, output)
+        # else:
+        #     ops.scatter2gather_cpu_float32(data, output)
+        ops.scatter2gather_cpu_float32(data, output)
 
         # data.to('cpu')
         # output.to('cpu')
@@ -71,11 +72,11 @@ class Scatter2Gather(th.autograd.Function):
         d_data.resize_as_(d_output)
         _, kh, kw, _, _ = d_data.shape
 
-        if _is_cuda(d_output):
-            ops.scatter2gather_cuda_float32(d_output, d_data)
-        else:
-            ops.scatter2gather_cpu_float32(d_output, d_data)
-
+        # if _is_cuda(d_output):
+        #     ops.scatter2gather_cuda_float32(d_output, d_data)
+        # else:
+        #     ops.scatter2gather_cpu_float32(d_output, d_data)
+        ops.scatter2gather_cpu_float32(d_output, d_data)
         # d_output.to('cpu')
         # d_data.to('cpu')
         # ops.scatter2gather_cpu_float32(d_output, d_data)
@@ -105,10 +106,11 @@ class KernelWeighting(th.autograd.Function):
         output.resize_as_(data)
         sum_w.resize_(bs, h, w)
 
-        if _is_cuda(data, weights):
-            ops.kernel_weighting_cuda_float32(data, weights, output, sum_w)
-        else:
-            ops.kernel_weighting_cpu_float32(data, weights, output, sum_w)
+        # if _is_cuda(data, weights):
+        #     ops.kernel_weighting_cuda_float32(data, weights, output, sum_w)
+        # else:
+        #     ops.kernel_weighting_cpu_float32(data, weights, output, sum_w)
+        ops.kernel_weighting_cpu_float32(data, weights, output, sum_w)
         
         # data.to('cpu')
         # weights.to('cpu')
@@ -129,13 +131,16 @@ class KernelWeighting(th.autograd.Function):
         d_data.resize_as_(data)
         d_weights.resize_as_(weights)
 
-        if _is_cuda(d_output, d_sum_w):
-            ops.kernel_weighting_grad_cuda_float32(
-                data, weights, sum_w, d_output, d_sum_w, d_data, d_weights)
-        else:
-            ops.kernel_weighting_grad_cpu_float32(
-                data, weights, sum_w, d_output, d_sum_w, d_data, d_weights)
-
+        # if _is_cuda(d_output, d_sum_w):
+        #     ops.kernel_weighting_grad_cuda_float32(
+        #         data, weights, sum_w, d_output, d_sum_w, d_data, d_weights)
+        # else:
+        #     ops.kernel_weighting_grad_cpu_float32(
+        #         data, weights, sum_w, d_output, d_sum_w, d_data, d_weights)
+        
+        ops.kernel_weighting_grad_cpu_float32(
+            data, weights, sum_w, d_output, d_sum_w, d_data, d_weights)
+            
         # data.to('cpu')
         # weights.to('cpu')
         # sum_w.to('cpu')

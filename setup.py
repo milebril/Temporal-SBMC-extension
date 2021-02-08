@@ -71,7 +71,7 @@ def main():
     ]
 
     try:
-        subprocess.check_output(["nvcc", "--version"])
+        # subprocess.check_output(["nvcc", "--version"])
         print("Found an nvcc compiler: compiling the CUDA Halide extensions.")
         generators += [
             hlpt.HalideOp("src/scatter2gather.cpp", "scatter2gather",

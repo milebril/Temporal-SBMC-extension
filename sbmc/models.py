@@ -27,6 +27,8 @@ import torch.nn as nn
 from ttools.modules.image_operators import crop_like
 import ttools
 
+import time
+
 from . import modules as ops
 
 LOG = ttools.get_logger(__name__)
@@ -195,6 +197,13 @@ class Multisteps(nn.Module):
         # the current sample's features
         sum_r, sum_w, max_w = None, None, None
 
+        # Cast data to CPU for Halide
+        cast = 'cuda' in str(radiance.device)
+        if (cast):
+            radiance = radiance.clone().detach().requires_grad_(True).to('cpu')
+            propagated = propagated.clone().detach().requires_grad_(True).to('cpu')
+            self.to('cpu')
+
         for sp in range(spp):
             f = features[:, sp].to(radiance.device)
             f = th.cat([f, propagated], 1)
@@ -211,8 +220,14 @@ class Multisteps(nn.Module):
                 if th.cuda.is_available():
                     th.cuda.empty_cache()
 
+        # Recast to CUDA
+        if (cast):
+            radiance = radiance.clone().detach().requires_grad_(True).to('cuda')
+            self.to('cuda')
+        
         # Normalize output with the running sum
         output = sum_r / (sum_w + self.eps)
+        output = output.clone().detach().requires_grad_(True).to('cuda')
 
         # Remove the invalid boundary data
         crop = (self.ksize - 1) // 2
@@ -277,22 +292,24 @@ class RecurrentMultisteps(nn.Module):
                                           pad=False))
 
             # U-net implements the pixel spatial propagation step
+            # With recurrent connection in the first step
             # if step == self.nsteps-1:
-            #     self.add_module("propagation_{:02d}".format(step), ops.RecurrentAutoencoder(
-            #         self.embedding_width, width, num_levels=3, increase_factor=2.0,
-            #         num_convs=3, width=width, ksize=3, output_type="leaky_relu",
-            #         pooling="max"))
-            # else:
-            #     self.add_module("propagation_{:02d}".format(step), ops.Autoencoder(
-            #         self.embedding_width, width, num_levels=3, increase_factor=2.0,
-            #         num_convs=3, width=width, ksize=3, output_type="leaky_relu",
-            #         pooling="max"))
+            if step == 0:
+                self.add_module("propagation_{:02d}".format(step), ops.RecurrentAutoencoder(
+                    self.embedding_width, width, num_levels=3, increase_factor=2.0,
+                    num_convs=3, width=width, ksize=3, output_type="leaky_relu",
+                    pooling="max"))
+            else:
+                self.add_module("propagation_{:02d}".format(step), ops.Autoencoder(
+                    self.embedding_width, width, num_levels=3, increase_factor=2.0,
+                    num_convs=3, width=width, ksize=3, output_type="leaky_relu",
+                    pooling="max"))
 
             # Adding recurrent connections to every step
-            self.add_module("propagation_{:02d}".format(step), ops.RecurrentAutoencoder(
-                self.embedding_width, width, num_levels=3, increase_factor=2.0,
-                num_convs=3, width=width, ksize=3, output_type="leaky_relu",
-                pooling="max"))
+            # self.add_module("propagation_{:02d}".format(step), ops.RecurrentAutoencoder(
+            #     self.embedding_width, width, num_levels=3, increase_factor=2.0,
+            #     num_convs=3, width=width, ksize=3, output_type="leaky_relu",
+            #     pooling="max"))
 
         # Final regression for the per-sample kernel (also 1x1 convs)
         # Generate the Kernel used for splatting
@@ -384,10 +401,7 @@ class RecurrentMultisteps(nn.Module):
                 nf = self.embedding_width
 
             # Propagate spatially the pixel context
-            if isinstance(modules["propagation_{:02d}".format(step)], ops.RecurrentAutoencoder):
-                propagated = modules["propagation_{:02d}".format(step)](reduced)
-            else:
-                propagated = modules["propagation_{:02d}".format(step)](reduced)
+            propagated = modules["propagation_{:02d}".format(step)](reduced)
 
             if limit_memory_usage:
                 del reduced
@@ -397,6 +411,14 @@ class RecurrentMultisteps(nn.Module):
         # Predict kernels based on the context information and
         # the current sample's features
         sum_r, sum_w, max_w = None, None, None
+
+        # Cast data to CPU for Halide
+              # Cast data to CPU for Halide
+        cast = 'cuda' in str(radiance.device)
+        if (cast):
+            radiance = radiance.clone().detach().requires_grad_(True).to('cpu')
+            propagated = propagated.clone().detach().requires_grad_(True).to('cpu')
+            self.to('cpu')
 
         for sp in range(spp):
             f = features[:, sp].to(radiance.device)
@@ -414,8 +436,14 @@ class RecurrentMultisteps(nn.Module):
                 if th.cuda.is_available():
                     th.cuda.empty_cache()
 
+        # Recast to CUDA
+        if (cast):
+            radiance = radiance.clone().detach().requires_grad_(True).to('cuda')
+            self.to('cuda')
+        
         # Normalize output with the running sum
         output = sum_r / (sum_w + self.eps)
+        output = output.clone().detach().requires_grad_(True).to('cuda')
 
         # Remove the invalid boundary data
         crop = (self.ksize - 1) // 2

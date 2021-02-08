@@ -30,8 +30,10 @@ import torch as th
 import numpy as np
 from torch.utils.data import DataLoader
 import skimage.io as skio
+from sbmc import losses
 
 import ttools
+from ttools.modules.image_operators import crop_like
 
 import sbmc
 
@@ -184,7 +186,6 @@ def denoise(args, input_root="", output_root=""):
         for part, start_y, end_y, start_x, end_x, pad_ in batch_parts:
             with th.no_grad():
                 out_ = model(part)
-                print("MODE")
                 out_ = _pad(part, out_["radiance"], kpcn_mode)
                 out_ = out_[..., pad_[0]:out_.shape[-2] -
                             pad_[1], pad_[2]:out_.shape[-1]-pad_[3]]
@@ -193,6 +194,11 @@ def denoise(args, input_root="", output_root=""):
             th.cuda.synchronize()
         elapsed = (time.time() - start)*1000
         LOG.info("    denoising time {:.1f} ms".format(elapsed))
+
+        out = out_radiance
+        tgt = crop_like(batch["target_image"], out)  # make sure sizes match
+        loss = losses.RelativeMSE().forward(out, tgt)
+        print("RMSE: ", loss.item())
 
         # Change location if sequence is to be denoised
         print(scene_id, scene_names[scene_id].split('/')[-1] + ".png")
@@ -210,6 +216,9 @@ def denoise(args, input_root="", output_root=""):
         
         png = args.output.replace(".exr", ".png")
         skio.imsave(png, (np.clip(out_radiance, 0, 1)*255).astype(np.uint8))
+
+        #Denoise only 1 input image
+        # break
 
     shutil.rmtree(tmpdir)
     

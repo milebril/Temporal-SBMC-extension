@@ -19,12 +19,17 @@
 """Callbacks used a train time."""
 import torch as th
 
+import time
 import ttools
+import os
+import pyexr
+import numpy as np
+import skimage.io as skio
+
 from ttools.modules.image_operators import crop_like
 
 
 __all__ = ["DenoisingDisplayCallback"]
-
 
 class DenoisingDisplayCallback(ttools.ImageDisplayCallback):
     """A callback that periodically displays denoising results.
@@ -34,6 +39,11 @@ class DenoisingDisplayCallback(ttools.ImageDisplayCallback):
 
     See :class:`ttools.ImageDisplayCallback`'s documentation for more info.
     """
+    def __init__(self, frequency=100, server=None, port=8097, env="main", base_url="/", win=None, checkpoint_dir=""):
+        super(DenoisingDisplayCallback, self).__init__(frequency, server, port, env, base_url, win)
+
+        self.checkpoint_dir = checkpoint_dir
+
     def caption(self, batch, fwd_result):
         spp = batch["spp"][0].item()
         return "vertically: %dspp, ours, target, difference" % spp
@@ -50,6 +60,16 @@ class DenoisingDisplayCallback(ttools.ImageDisplayCallback):
         # Assemble a display gallery
         diff = (output-target).abs()
         data = th.cat([lowspp, output, target, diff], -2)
+
+        data_save = data[0, ...].cpu().detach().numpy().transpose([1, 2, 0])
+
+        # Save a denoising of initialised network
+        os.makedirs(self.checkpoint_dir, exist_ok=True)
+        outputfile = os.path.join(self.checkpoint_dir, f'{time.time()}.png')
+        pyexr.write(outputfile, data_save)
+        
+        png = outputfile.replace(".exr", ".png")
+        skio.imsave(png, (np.clip(data_save, 0, 1)*255).astype(np.uint8))
 
         # Clip and tonemap
         data = th.clamp(data, 0)

@@ -21,6 +21,7 @@
 import numpy as np
 import torch as th
 from torch.utils.data import DataLoader
+import os
 
 from sbmc import modules
 
@@ -80,7 +81,6 @@ def main(args):
         data, batch_size=args.bs, num_workers=args.num_worker_threads,
         shuffle=False) # Don't shuffle as we want to learn to denoise sequences
 
-
     # Validation set uses a constant spp
     val_dataloader = None
     if args.val_data is not None:
@@ -98,10 +98,19 @@ def main(args):
 
     checkpointer = ttools.Checkpointer(args.checkpoint_dir, model, meta=meta)
 
-    interface = sbmc.SampleBasedDenoiserInterface(
-        model, lr=args.lr, cuda=False)
-
     extras, meta = checkpointer.load_latest()
+    print(extras, meta)
+
+    # Try and load last completed training into the model
+    # print(args.checkpoint_dir)
+    # model_location =  os.path.join(args.checkpoint_dir, "training_end.pth")
+    # if os.path.isfile(model_location):
+    #     model.load_state_dict(th.load(model_location, map_location=th.device('cpu'))['model'])
+
+    # interface = sbmc.SampleBasedDenoiserInterface(
+    #     model, lr=args.lr, cuda=False)
+    interface = sbmc.SampleBasedDenoiserInterface(
+        model, lr=args.lr, cuda=True)
 
     trainer = ttools.Trainer(interface)
 
@@ -115,55 +124,17 @@ def main(args):
                                                                 port=args.port,
                                                                 log=True,
                                                                 frequency=25))
-    trainer.add_callback(sbmc.DenoisingDisplayCallback(env=args.env,
+    trainer.add_callback(sbmc.DenoisingDisplayCallback(frequency=25, 
+                                                       env=args.env,
                                                        port=args.port,
-                                                       win="images"))
-
-    # if extras is None: 
-    #     LOG.info("Loading SBMC weight into Temporal model")
-    #     gharbi = "/home/emil/Documents/Temporal-SBMC-extension/data/pretrained_models/gharbi2019_sbmc/final.pth"
-    #     pre_trained_model = th.load(gharbi, map_location=th.device('cpu'))
-    #     new = list(pre_trained_model['model'].items())
-    #     my_model_kvpair = model.state_dict()
-
-    #     count=0
-    #     for key,value in my_model_kvpair.items():
-    #         layer_name, weights = new[count]
-
-    #         # Skip the modules with recurrent connections   
-    #         if 'propagation_02' in layer_name and 'left' in layer_name:
-    #             count+=1
-    #             continue
-    #         # print(f"Layer: {layer_name}")
-    #         my_model_kvpair[key] = weights
-    #         count+=1
-
-    #     model.load_state_dict(my_model_kvpair)
-
-    #     # Lock all other parameters
-    #     for name, layer in model.named_modules():
-    #         # Skip recurrent layers
-    #         if isinstance(layer, modules.RecurrentConvChain):
-    #             continue
-    #         for param in layer.parameters():
-    #             param.requires_grad = False   
-
-    open('models/epoch-1.txt', 'w').close()
-    f = open("models/epoch-1.txt", "a")
-    # for p in model.parameters():
-    f.write(str(model.state_dict()))
-    f.close()
+                                                       win="images",
+                                                       checkpoint_dir=args.checkpoint_dir))
 
     # Launch the training
     LOG.info("Training started, 'Ctrl+C' to abort.")
     trainer.train(dataloader, num_epochs=1,
                 val_dataloader=val_dataloader)
 
-    open('models/epoch0.txt', 'w').close()
-    f = open("models/epoch0.txt", "a")
-    # for p in model.parameters():
-    f.write(str(model.state_dict()))
-    f.close()
 
 def get_n_params(model):
     pp=0

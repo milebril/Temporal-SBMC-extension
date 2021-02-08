@@ -139,7 +139,7 @@ def main(args):
     interface = sbmc.SampleBasedDenoiserInterface(
         model, lr=args.lr, cuda=False)
 
-    num_epochs = 5
+    num_epochs = 1
     epoch = 0
 
     # Save a denoising of initialised network
@@ -157,6 +157,8 @@ def main(args):
 
     while num_epochs is None or epoch < num_epochs:
         nbatches = len(dataloader)
+        
+        # Loss en RMSE  eens uitprinten en in een graph
 
         for batch_idx, batch in enumerate(dataloader):
             # Start a batch
