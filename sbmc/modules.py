@@ -584,7 +584,8 @@ class RecurrentConvChain(nn.Module):
     
     def init_hidden(self, tensor):
         dim, nf, h, w = tensor.shape
-        return th.zeros((dim, self.noutputs, h, w))
+        tensor = th.zeros((dim, self.noutputs, h, w), device=next(self.parameters()).device)
+        return tensor
     
     class _ConvBNRelu(nn.Module):
         """Helper class that implements a simple Conv-(Norm)-Activation group.
