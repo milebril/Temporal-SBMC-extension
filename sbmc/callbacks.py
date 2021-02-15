@@ -29,7 +29,16 @@ import skimage.io as skio
 from ttools.modules.image_operators import crop_like
 
 
-__all__ = ["DenoisingDisplayCallback"]
+__all__ = ["DenoisingDisplayCallback", "SchedulerCallback"]
+
+class SchedulerCallback(ttools.Callback):
+    def __init__(self, scheduler):
+        super(SchedulerCallback, self).__init__()
+        self.scheduler = scheduler
+    
+    def epoch_end(self):
+        self.scheduler.step()
+
 
 class DenoisingDisplayCallback(ttools.ImageDisplayCallback):
     """A callback that periodically displays denoising results.

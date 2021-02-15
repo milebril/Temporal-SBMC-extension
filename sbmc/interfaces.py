@@ -24,6 +24,7 @@ import torch as th
 
 from sbmc import losses
 from ttools.modules.image_operators import crop_like
+from torch.optim import lr_scheduler
 
 
 LOG = ttools.get_logger(__name__)
@@ -56,8 +57,9 @@ class SampleBasedDenoiserInterface(ttools.ModelInterface):
             self.model.cuda()
             self.loss_fn.cuda()
             self.rmse_fn.cuda()
-
+        
         self.optimizer = th.optim.Adam(self.model.parameters(), lr=lr)
+        self.scheduler = lr_scheduler.StepLR(self.optimizer, step_size=20, gamma=0.1)
 
     def forward(self, batch):
         """Runs a forward pass of the model.

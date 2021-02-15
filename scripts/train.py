@@ -111,7 +111,7 @@ def main(args):
     #     model, lr=args.lr, cuda=False)
 
     interface = sbmc.SampleBasedDenoiserInterface(
-        model, lr=args.lr, cuda=False)
+        model, lr=args.lr, cuda=True)
 
     trainer = ttools.Trainer(interface)
 
@@ -130,10 +130,11 @@ def main(args):
                                                        port=args.port,
                                                        win="images",
                                                        checkpoint_dir=args.checkpoint_dir))
+    trainer.add_callback(sbmc.SchedulerCallback(interface.scheduler))
 
     # Launch the training
     LOG.info("Training started, 'Ctrl+C' to abort.")
-    trainer.train(dataloader, num_epochs=10,
+    trainer.train(dataloader, num_epochs=50,
                 val_dataloader=val_dataloader)
 
 """
