@@ -80,7 +80,7 @@ class SampleBasedDenoiserInterface(ttools.ModelInterface):
 
         out = fwd["radiance"]
         tgt = crop_like(batch["target_image"], out)  # make sure sizes match
-
+        
         loss = self.loss_fn(out, tgt)
         loss.backward()
 

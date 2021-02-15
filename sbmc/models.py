@@ -198,36 +198,52 @@ class Multisteps(nn.Module):
         sum_r, sum_w, max_w = None, None, None
 
         # Cast data to CPU for Halide
+        # tensor.cuda() is used to move a tensor to GPU memory.
+        # tensor.cpu() moves it back to memory accessible to the CPU.
         cast = 'cuda' in str(radiance.device)
         if (cast):
-            radiance = radiance.clone().detach().requires_grad_(True).to('cpu')
-            propagated = propagated.clone().detach().requires_grad_(True).to('cpu')
+            # radiance_clone = radiance.clone().detach().requires_grad_(True).to('cpu')
+            # propagated_clone = propagated.clone().detach().requires_grad_(True).to('cpu')
+            radiance_clone = radiance.to('cpu')
+            propagated_clone = propagated.to('cpu')
             self.to('cpu')
 
         for sp in range(spp):
-            f = features[:, sp].to(radiance.device)
-            f = th.cat([f, propagated], 1)
-            r = radiance[:, sp].to(radiance.device)
+            if cast:
+                f = features[:, sp].to(radiance_clone.device)
+                f = th.cat([f, propagated_clone], 1)
+                r = radiance_clone[:, sp].to(radiance_clone.device)
+            else:
+                f = features[:, sp].to(radiance.device)
+                f = th.cat([f, propagated], 1)
+                r = radiance[:, sp].to(radiance.device)
+
             kernels = self.kernel_regressor(f)
             if limit_memory_usage:
                 if th.cuda.is_available():
                     th.cuda.empty_cache()
-
             # Update radiance estimate
             sum_r, sum_w, max_w = self.kernel_update(
                 crop_like(r, kernels), kernels, sum_r, sum_w, max_w)
             if limit_memory_usage:
                 if th.cuda.is_available():
                     th.cuda.empty_cache()
+        
+        # Normalize output with the running sum
+        if (cast):
+            sum_r = sum_r.clone().detach().requires_grad_(True).to('cuda')
+            sum_w = sum_w.clone().detach().requires_grad_(True).to('cuda')
+            max_w = max_w.clone().detach().requires_grad_(True).to('cuda')
+            kernels = kernels.clone().detach().requires_grad_(True).to('cuda')
+            # sum_r = sum_r.to('cuda')
+            # sum_w = sum_w.to('cuda')
+
+        output = sum_r / (sum_w + self.eps)
+        # output = output.cuda()
 
         # Recast to CUDA
         if (cast):
-            radiance = radiance.clone().detach().requires_grad_(True).to('cuda')
             self.to('cuda')
-        
-        # Normalize output with the running sum
-        output = sum_r / (sum_w + self.eps)
-        output = output.clone().detach().requires_grad_(True).to('cuda')
 
         # Remove the invalid boundary data
         crop = (self.ksize - 1) // 2
@@ -413,37 +429,52 @@ class RecurrentMultisteps(nn.Module):
         sum_r, sum_w, max_w = None, None, None
 
         # Cast data to CPU for Halide
-              # Cast data to CPU for Halide
+        # tensor.cuda() is used to move a tensor to GPU memory.
+        # tensor.cpu() moves it back to memory accessible to the CPU.
         cast = 'cuda' in str(radiance.device)
         if (cast):
-            radiance = radiance.clone().detach().requires_grad_(True).to('cpu')
-            propagated = propagated.clone().detach().requires_grad_(True).to('cpu')
+            # radiance_clone = radiance.clone().detach().requires_grad_(True).to('cpu')
+            # propagated_clone = propagated.clone().detach().requires_grad_(True).to('cpu')
+            radiance_clone = radiance.to('cpu')
+            propagated_clone = propagated.to('cpu')
             self.to('cpu')
 
         for sp in range(spp):
-            f = features[:, sp].to(radiance.device)
-            f = th.cat([f, propagated], 1)
-            r = radiance[:, sp].to(radiance.device)
+            if cast:
+                f = features[:, sp].to(radiance_clone.device)
+                f = th.cat([f, propagated_clone], 1)
+                r = radiance_clone[:, sp].to(radiance_clone.device)
+            else:
+                f = features[:, sp].to(radiance.device)
+                f = th.cat([f, propagated], 1)
+                r = radiance[:, sp].to(radiance.device)
+
             kernels = self.kernel_regressor(f)
             if limit_memory_usage:
                 if th.cuda.is_available():
                     th.cuda.empty_cache()
-
             # Update radiance estimate
             sum_r, sum_w, max_w = self.kernel_update(
                 crop_like(r, kernels), kernels, sum_r, sum_w, max_w)
             if limit_memory_usage:
                 if th.cuda.is_available():
                     th.cuda.empty_cache()
+        
+        # Normalize output with the running sum
+        if (cast):
+            sum_r = sum_r.clone().detach().requires_grad_(True).to('cuda')
+            sum_w = sum_w.clone().detach().requires_grad_(True).to('cuda')
+            max_w = max_w.clone().detach().requires_grad_(True).to('cuda')
+            kernels = kernels.clone().detach().requires_grad_(True).to('cuda')
+            # sum_r = sum_r.to('cuda')
+            # sum_w = sum_w.to('cuda')
+
+        output = sum_r / (sum_w + self.eps)
+        # output = output.cuda()
 
         # Recast to CUDA
         if (cast):
-            radiance = radiance.clone().detach().requires_grad_(True).to('cuda')
             self.to('cuda')
-        
-        # Normalize output with the running sum
-        output = sum_r / (sum_w + self.eps)
-        output = output.clone().detach().requires_grad_(True).to('cuda')
 
         # Remove the invalid boundary data
         crop = (self.ksize - 1) // 2

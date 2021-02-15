@@ -145,7 +145,7 @@ def denoise(args, input_root="", output_root=""):
     model.train(False)
     device = "cpu"
     cuda = th.cuda.is_available()
-    cuda = False
+    # cuda = False
     if cuda:
         LOG.info("Using CUDA")
         model.cuda()

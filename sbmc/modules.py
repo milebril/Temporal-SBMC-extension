@@ -415,7 +415,6 @@ class ProgressiveKernelApply(nn.Module):
             sum_w(th.Tensor[bs, 1, h, w]): updated running sum of weights
             max_w(th.Tensor[bs, 1, h, w]): updated running maximum of weights.
         """
-
         # Get kernel dimensions
         bs, k2, h, w = kernels.shape
         k = int(np.sqrt(k2))

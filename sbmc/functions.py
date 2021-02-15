@@ -59,10 +59,6 @@ class Scatter2Gather(th.autograd.Function):
         #     ops.scatter2gather_cpu_float32(data, output)
         ops.scatter2gather_cpu_float32(data, output)
 
-        # data.to('cpu')
-        # output.to('cpu')
-        # ops.scatter2gather_cpu_float32(data, output)
-        # output.to('cuda')
 
         return output
 
@@ -77,10 +73,7 @@ class Scatter2Gather(th.autograd.Function):
         # else:
         #     ops.scatter2gather_cpu_float32(d_output, d_data)
         ops.scatter2gather_cpu_float32(d_output, d_data)
-        # d_output.to('cpu')
-        # d_data.to('cpu')
-        # ops.scatter2gather_cpu_float32(d_output, d_data)
-        # d_data.to('cuda')
+
         return d_data
 
 
@@ -111,14 +104,6 @@ class KernelWeighting(th.autograd.Function):
         # else:
         #     ops.kernel_weighting_cpu_float32(data, weights, output, sum_w)
         ops.kernel_weighting_cpu_float32(data, weights, output, sum_w)
-        
-        # data.to('cpu')
-        # weights.to('cpu')
-        # output.to('cpu')
-        # sum_w.to('cpu')
-        # ops.kernel_weighting_cpu_float32(data, weights, output, sum_w)
-        # output.to('cuda')
-        # sum_w.to('cuda')
 
         ctx.save_for_backward(data, weights, sum_w)
         return output, sum_w
@@ -140,17 +125,5 @@ class KernelWeighting(th.autograd.Function):
         
         ops.kernel_weighting_grad_cpu_float32(
             data, weights, sum_w, d_output, d_sum_w, d_data, d_weights)
-            
-        # data.to('cpu')
-        # weights.to('cpu')
-        # sum_w.to('cpu')
-        # d_output.to('cpu')
-        # d_sum_w.to('cpu')
-        # d_data.to('cpu')
-        # d_weights.to('cpu')
-        # ops.kernel_weighting_grad_cpu_float32(
-        #     data, weights, sum_w, d_output, d_sum_w, d_data, d_weights)
-        # d_data.to('cuda')
-        # d_weights.to('cuda')
 
         return d_data, d_weights

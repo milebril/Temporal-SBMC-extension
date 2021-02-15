@@ -109,8 +109,9 @@ def main(args):
 
     # interface = sbmc.SampleBasedDenoiserInterface(
     #     model, lr=args.lr, cuda=False)
+
     interface = sbmc.SampleBasedDenoiserInterface(
-        model, lr=args.lr, cuda=True)
+        model, lr=args.lr, cuda=False)
 
     trainer = ttools.Trainer(interface)
 
@@ -132,10 +133,12 @@ def main(args):
 
     # Launch the training
     LOG.info("Training started, 'Ctrl+C' to abort.")
-    trainer.train(dataloader, num_epochs=1,
+    trainer.train(dataloader, num_epochs=10,
                 val_dataloader=val_dataloader)
 
-
+"""
+    Returns the total amount of parameters in a given model
+"""
 def get_n_params(model):
     pp=0
     for p in list(model.parameters()):

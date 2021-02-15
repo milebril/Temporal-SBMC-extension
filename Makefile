@@ -220,6 +220,14 @@ denoise_sequence:
 # --input $(OUTPUT)/emil/validation_sequence/render_samples_seq \
 # 		--output $(OUTPUT)/emil/dataviz_val_sequence/denoised/ \
 
+denoise_sequence_trained:
+	@python scripts/denoise.py \
+		--input $(OUTPUT)/emil/training_sequence/render_samples_seq \
+		--output $(OUTPUT)/emil/dataviz_sequence/denoised/ \
+		--spp 4 --sequence \
+		--checkpoint $(OUTPUT)/emil/training_sbmc_theirs_200epochs \
+		--frames 5
+
 denoise_sequence_peters:
 	@python scripts/denoise.py \
 		--input $(OUTPUT)/emil/training_sequence/render_samples_seq \
