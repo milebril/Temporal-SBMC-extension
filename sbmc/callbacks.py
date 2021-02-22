@@ -70,8 +70,14 @@ class DenoisingDisplayCallback(ttools.ImageDisplayCallback):
         diff = (output-target).abs()
         data = th.cat([lowspp, output, target, diff], -2)
 
-        data_save = data[0, ...].cpu().detach().numpy().transpose([1, 2, 0])
+        # Clip and tonemap
+        data = th.clamp(data, 0)
+        data /= 1 + data
+        data = th.pow(data, 1.0/2.2)
+        data = th.clamp(data, 0, 1)
 
+        data_save = data[0, ...].cpu().detach().numpy().transpose([1, 2, 0])
+        
         # Save a denoising of initialised network
         os.makedirs(self.checkpoint_dir, exist_ok=True)
         outputfile = os.path.join(self.checkpoint_dir, f'{time.time()}.png')
@@ -79,11 +85,5 @@ class DenoisingDisplayCallback(ttools.ImageDisplayCallback):
         
         png = outputfile.replace(".exr", ".png")
         skio.imsave(png, (np.clip(data_save, 0, 1)*255).astype(np.uint8))
-
-        # Clip and tonemap
-        data = th.clamp(data, 0)
-        data /= 1 + data
-        data = th.pow(data, 1.0/2.2)
-        data = th.clamp(data, 0, 1)
 
         return data

@@ -78,7 +78,7 @@ def main(args):
         model.cuda()
 
     # Training params
-    num_epochs = 2
+    num_epochs = 10
 
     # Save randomly initialized model to compare with later epochs
     save_checkpoint(model, optimizer, os.path.join(args.checkpoint_dir, "start.pth"), -1)
@@ -99,12 +99,12 @@ def main(args):
             target = crop_like(batch["target_image"], output)
 
             loss = loss_fn(output, target)
-            print(f'Epoch: {epoch}, batch: {batch_idx}, loss: {loss.item()}')
+            # print(f'Epoch: {epoch}, batch: {batch_idx}, loss: {loss.item()}')
             loss.backward()
 
-            for i in range(len(list(model.parameters()))):
-                t = list(model.parameters())[i].grad.device
-                print(t)
+            # for i in range(len(list(model.parameters()))):
+            #     t = list(model.parameters())[i].grad.device
+            #     print(t)
                 # if 'cpu' in str(t):
                 #     print(list(model.parameters())[i].grad)
 
@@ -118,21 +118,47 @@ def main(args):
 
             if (batch_idx == 0):
                 rad = output.detach()
-                save_img(rad, args.checkpoint_dir)
+                save_img(rad, args.checkpoint_dir, str(epoch))
+
+            printProgressBar(batch_idx+1, len(dataloader), prefix=f'Epoch {epoch}', suffix=f'{batch_idx+1}/{len(dataloader)} loss: {round(loss.item(), 3)}') # Print out progress after batch is finished    
 
         # End of an epoch
         scheduler.step()
 
-    tmp_model = sbmc.Multisteps(data.num_features, data.num_global_features,
-                                ksize=args.ksize, splat=not args.gather,
-                                pixel=args.pixel)
-    tmp_opt = th.optim.Adam(tmp_model.parameters(), lr=args.lr)
+    save_checkpoint(model, optimizer, os.path.join(args.checkpoint_dir, "training_end.pth"), num_epochs)
 
-    load_checkpoint(tmp_model, tmp_opt, os.path.join(args.checkpoint_dir, "start.pth"))
-    tmp_model.cuda()
-    compare_models(model, tmp_model)
+    # Check if training succeeded
+    # tmp_model = sbmc.Multisteps(data.num_features, data.num_global_features,
+    #                             ksize=args.ksize, splat=not args.gather,
+    #                             pixel=args.pixel)
+    # tmp_opt = th.optim.Adam(tmp_model.parameters(), lr=args.lr)
+    # load_checkpoint(tmp_model, tmp_opt, os.path.join(args.checkpoint_dir, "start.pth"))
+    # tmp_model.cuda()
+    # compare_models(model, tmp_model)
 
-def save_img(radiance, checkpoint_dir):
+# Print iterations progress
+def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 50, fill = '█', printEnd = "\r"):
+    """
+    Call in a loop to create terminal progress bar
+    @params:
+        iteration   - Required  : current iteration (Int)
+        total       - Required  : total iterations (Int)
+        prefix      - Optional  : prefix string (Str)
+        suffix      - Optional  : suffix string (Str)
+        decimals    - Optional  : positive number of decimals in percent complete (Int)
+        length      - Optional  : character length of bar (Int)
+        fill        - Optional  : bar fill character (Str)
+        printEnd    - Optional  : end character (e.g. "\r", "\r\n") (Str)
+    """
+    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+    filledLength = int(length * iteration // total)
+    bar = fill * filledLength + '-' * (length - filledLength)
+    print(f'\r{prefix} |{bar}| {percent}% {suffix}', end = printEnd)
+    # Print New Line on Complete
+    if iteration == total: 
+        print()
+
+def save_img(radiance, checkpoint_dir, name):
     data = th.clamp(radiance, 0)
     data /= 1 + data
     data = th.pow(data, 1.0/2.2)
@@ -141,7 +167,7 @@ def save_img(radiance, checkpoint_dir):
     data = data[0, ...].cpu().detach().numpy().transpose([1, 2, 0])
 
     os.makedirs(checkpoint_dir, exist_ok=True)
-    outputfile = os.path.join(checkpoint_dir, f'{time.time()}.png')
+    outputfile = os.path.join(checkpoint_dir, f'{name}.png')
     pyexr.write(outputfile, data)
     
     png = outputfile.replace(".exr", ".png")

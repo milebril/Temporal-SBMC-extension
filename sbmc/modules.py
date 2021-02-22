@@ -351,13 +351,19 @@ class KernelApply(nn.Module):
         k = int(np.sqrt(k2))
         kernels = kernels.view(bs, k, k, h, w)
         if self.splat:
+            kernels = kernels.to('cpu')
             kernels = funcs.Scatter2Gather.apply(kernels)
+            kernels = kernels.to('cuda')
         if self.softmax:
             kernels = kernels.view(bs, k*k, h, w)
             kernels = F.softmax(kernels, dim=1)
             kernels = kernels.view(bs, k, k, h, w)
 
+        kernels = kernels.to('cpu')
+        data = data.to('cpu')
         output, sum_w = funcs.KernelWeighting.apply(data, kernels)
+        output = output.to('cuda')
+        sum_w = sum_w.to('cuda')
         sum_w = sum_w.unsqueeze(1)
         return output, sum_w
 
@@ -423,7 +429,9 @@ class ProgressiveKernelApply(nn.Module):
 
         # Convert to the gather representation if we have splat kernels
         if self.splat:
+            kernels = kernels.to('cpu')
             kernels = funcs.Scatter2Gather.apply(kernels)
+            kernels = kernels.to('cuda')
         kernels_view = kernels.view(bs, k*k, h, w)
 
         # Maximum of the current kernels
@@ -443,8 +451,12 @@ class ProgressiveKernelApply(nn.Module):
             kernels.exp_()
 
             # Computed weighted contributions
+            kernels = kernels.to('cpu')
+            data = data.to('cpu')
             sum_r, sum_w = funcs.KernelWeighting.apply(
                 data.contiguous(), kernels.contiguous())
+            sum_r = sum_r.to('cuda')
+            sum_w = sum_w.to('cuda')
             sum_w = sum_w.unsqueeze(1)
 
         else:
@@ -464,8 +476,12 @@ class ProgressiveKernelApply(nn.Module):
             kernels.exp_()
 
             # Computed weighted contributions
+            kernels = kernels.to('cpu')
+            data = data.to('cpu')
             new_sum_r, new_sum_w = funcs.KernelWeighting.apply(
                 data.contiguous(), kernels.contiguous())
+            new_sum_r = new_sum_r.to('cuda')
+            new_sum_w = new_sum_w.to('cuda')
             new_sum_w = new_sum_w.unsqueeze(1)
 
             # Update running sums

@@ -250,7 +250,7 @@ class Multisteps(nn.Module):
             # max_w = max_w.to('cuda')
             # kernels = kernels.to('cuda')
 
-        # output = sum_r / (sum_w + self.eps)
+        output = sum_r / (sum_w + self.eps)
         # output = output.cuda()
 
         if (cast):

@@ -117,6 +117,7 @@ def main(args):
 
     # Hook-up some callbacks to the training loop
     log_keys = ["loss", "rmse"]
+    freq = len(dataloader)
     trainer.add_callback(ttools.callbacks.ProgressBarCallback(log_keys))
     trainer.add_callback(ttools.callbacks.CheckpointingCallback(checkpointer,
                                                                 interval=None))
@@ -124,8 +125,8 @@ def main(args):
                                                                 env=args.env,
                                                                 port=args.port,
                                                                 log=True,
-                                                                frequency=25))
-    trainer.add_callback(sbmc.DenoisingDisplayCallback(frequency=25, 
+                                                                frequency=freq))
+    trainer.add_callback(sbmc.DenoisingDisplayCallback(frequency=freq, 
                                                        env=args.env,
                                                        port=args.port,
                                                        win="images",

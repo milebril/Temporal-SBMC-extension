@@ -59,7 +59,7 @@ class SampleBasedDenoiserInterface(ttools.ModelInterface):
             self.rmse_fn.cuda()
         
         self.optimizer = th.optim.Adam(self.model.parameters(), lr=lr)
-        self.scheduler = lr_scheduler.StepLR(self.optimizer, step_size=20, gamma=0.1)
+        self.scheduler = lr_scheduler.StepLR(self.optimizer, step_size=10, gamma=0.5)
 
     def forward(self, batch):
         """Runs a forward pass of the model.
