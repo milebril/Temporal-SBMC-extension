@@ -222,11 +222,12 @@ denoise_sequence:
 
 denoise_sequence_trained:
 	@python scripts/denoise.py \
-		--input $(OUTPUT)/emil/training_sequence/render_samples_seq \
+		--input $(OUTPUT)/emil/training_sequence_cornell/render_samples_seq \
 		--output $(OUTPUT)/emil/dataviz_sequence/denoised/ \
 		--spp 4 --sequence \
-		--checkpoint $(OUTPUT)/emil/training_sbmc_theirs_200epochs \
-		--frames 5
+		--checkpoint $(OUTPUT)/emil/training_sbmc_succesfull_150epochs \
+		--frames 40
+		#--checkpoint $(OUTPUT)/emil/training_sbmc_theirs_200epochs \
 
 denoise_sequence_peters:
 	@python scripts/denoise.py \
@@ -247,6 +248,13 @@ train_emil:
 
 train_sbmc:
 	@python scripts/train.py \
+		--checkpoint_dir $(OUTPUT)/emil/training_sbmc_theirs \
+		--data $(OUTPUT)/emil/training_sequence/filelist.txt \
+		--env sbmc_ours --port 2001 --bs 1 --constant_spp\
+		--spp 4 --debug
+
+train_new_sbmc:
+	@python scripts/training_new.py \
 		--checkpoint_dir $(OUTPUT)/emil/training_sbmc_theirs \
 		--data $(OUTPUT)/emil/training_sequence/filelist.txt \
 		--env sbmc_ours --port 2001 --bs 1 --constant_spp\
