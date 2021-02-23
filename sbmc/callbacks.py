@@ -35,7 +35,11 @@ class SchedulerCallback(ttools.Callback):
     def __init__(self, scheduler):
         super(SchedulerCallback, self).__init__()
         self.scheduler = scheduler
+        self.epoch = 0
     
+    def epoch_start(self, epoch_idx):
+        self.epoch = epoch_idx  
+
     def epoch_end(self):
         self.scheduler.step()
 

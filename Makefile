@@ -255,10 +255,17 @@ train_sbmc:
 
 train_new_sbmc:
 	@python scripts/training_new.py \
-		--checkpoint_dir $(OUTPUT)/emil/training_sbmc_theirs \
+		--checkpoint_dir $(OUTPUT)/emil/training_sbmc_custom \
 		--data $(OUTPUT)/emil/training_sequence/filelist.txt \
 		--env sbmc_ours --port 2001 --bs 1 --constant_spp\
 		--spp 4 --debug
+
+compare_models:
+	@python scripts/compare_models.py \
+		--model1 $(OUTPUT)/emil/compare/model1/training_end_400e.pth \
+		--model2 $(OUTPUT)/emil/compare/model2/training_end_custom_20e.pth \
+		--save_dir $(OUTPUT)/emil/compare/img \
+		--data $(OUTPUT)/emil/training_sequence/render_samples_seq
 
 # custom_train_sbmc:
 # 	@python scripts/custom_training.py \
