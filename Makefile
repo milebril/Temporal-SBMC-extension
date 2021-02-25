@@ -249,7 +249,7 @@ train_emil:
 train_sbmc:
 	@python scripts/train.py \
 		--checkpoint_dir $(OUTPUT)/emil/training_sbmc_theirs \
-		--data $(OUTPUT)/emil/training_sequence_outdoor/filelist.txt \
+				--data $(OUTPUT)/emil/training_sequence/filelist.txt \
 		--env sbmc_ours --port 2001 --bs 1 --constant_spp\
 		--spp 4 --debug
 

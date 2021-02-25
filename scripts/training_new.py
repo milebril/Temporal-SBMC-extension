@@ -56,40 +56,52 @@ def main(args):
 
     dataloader = DataLoader(
         data, batch_size=args.bs, num_workers=args.num_worker_threads,
-        shuffle=True) 
+        shuffle=False) 
 
     meta = dict(model_params=model_params, kpcn_mode=args.kpcn_mode,
             data_params=data_args)
         
     LOG.info("Model configuration: {}".format(model_params))
 
-    # Enable CUDA//CPU
-    device = 'cuda' if th.cuda.is_available() else 'cpu'
-
     # Loss functions
     loss_fn = losses.TonemappedRelativeMSE()
     rmse_fn = losses.RelativeMSE()
 
-    optimizer = th.optim.Adam(model.parameters(), lr=0.001)
-    scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
+    
+    optimizer = th.optim.Adam(model.parameters(), lr=1e-4)
+    scheduler = lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.1)
 
+    # Load the model if needed
+    checkpoint = os.path.join(args.checkpoint_dir, "training_end.pth")
+
+    if os.path.exists(checkpoint):
+        model, optimizer, start_epoch = load_checkpoint(model, optimizer, checkpoint)
+        LOG.info(f"Continuing training at epoch {start_epoch}")
+    else:
+        LOG.info(f"Training new model from scratch")
+
+    # Tensorboard writer
     writer = SummaryWriter()
 
+    # Enable CUDA//CPU
+    device = 'cuda' if th.cuda.is_available() else 'cpu'
     if device == 'cuda':
         LOG.info('Using CUDA')
         loss_fn.cuda()
         rmse_fn.cuda()
         model.cuda()
+    model.train()
 
     # Training params
     num_epochs = 50
 
     # Save randomly initialized model to compare with later epochs
-    save_checkpoint(model, optimizer, os.path.join(args.checkpoint_dir, "start.pth"), -1)
+    # save_checkpoint(model, optimizer, os.path.join(args.checkpoint_dir, "start.pth"), -1)
 
     total_loss = 0
     total_rmse = 0
 
+    LOG.info("[Start of training]")
     for epoch in range(num_epochs):
         # Start of an epoch
         for batch_idx, batch in enumerate(dataloader):
@@ -104,7 +116,6 @@ def main(args):
             output = model(batch)["radiance"]
             
             # Backward pass
-            optimizer.zero_grad()
             target = crop_like(batch["target_image"], output)
 
             loss = loss_fn(output, target)
@@ -119,17 +130,19 @@ def main(args):
 
             optimizer.step()
 
-            if (batch_idx == 0):
+            if batch_idx == 0 and epoch % 2 == 0:
                 rad = output.detach()
                 save_img(rad, args.checkpoint_dir, str(epoch))
             
             with th.no_grad():
                 total_rmse += rmse_fn(output, target)
 
-            printProgressBar(batch_idx+1, len(dataloader), prefix=f'Epoch {epoch}', suffix=f'{batch_idx+1}/{len(dataloader)} loss: {round(loss.item(), 3)}') # Print out progress after batch is finished    
+            printProgressBar(batch_idx+1, len(dataloader), prefix=f'Epoch {epoch}', suffix=f'{batch_idx+1}/{len(dataloader)} loss: {round(total_loss / (batch_idx+1), 15)}') # Print out progress after batch is finished    
 
         # End of an epoch
         scheduler.step()
+
+        # print(optimizer.state_dict()["state"])
         
         # Write data to tensorboard for visualization
         writer.add_scalar('Learning_Rate', scheduler.get_lr(), epoch)
@@ -140,7 +153,7 @@ def main(args):
         total_loss = 0
         total_rmse = 0
 
-    # Close writer when done training
+    # Close writer when done with training
     writer.close()
 
     # Save final model
@@ -207,7 +220,10 @@ def load_checkpoint(model, optimizer, load_path):
     
     return model, optimizer, epoch
 
-
+"""
+    Check whether two models differ in parameter values
+    Used to verify that the model is in fact training
+"""
 def compare_models(model_1, model_2):
     models_differ = 0
     for key_item_1, key_item_2 in zip(model_1.state_dict().items(), model_2.state_dict().items()):
