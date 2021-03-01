@@ -26,10 +26,11 @@ import pyexr
 import numpy as np
 import skimage.io as skio
 
+from ttools.utils import ExponentialMovingAverage
 from ttools.modules.image_operators import crop_like
 
 
-__all__ = ["DenoisingDisplayCallback", "SchedulerCallback"]
+__all__ = ["DenoisingDisplayCallback", "SchedulerCallback", "TensorboardCallback", "SaveImageCallback"]
 
 class SchedulerCallback(ttools.Callback):
     def __init__(self, scheduler):
@@ -43,6 +44,71 @@ class SchedulerCallback(ttools.Callback):
     def epoch_end(self):
         self.scheduler.step()
 
+class TensorboardCallback(ttools.Callback):
+    def __init__(self, log_keys, writer):
+        super(TensorboardCallback, self).__init__()
+        self.log_keys = log_keys
+        self.writer = writer
+        self.epoch = 0
+
+        self.ema = ExponentialMovingAverage(self.log_keys, alpha=0.99)
+
+    def epoch_start(self ,epoch_idx):
+        self.epoch = epoch_idx  
+
+    def epoch_end(self):
+        self.writer.add_scalar('Loss/train', self.ema["loss"], self.epoch)
+        self.writer.add_scalar('RMSE/train', self.ema["rmse"], self.epoch)
+
+class SaveImageCallback(ttools.Callback):
+    def __init__(self, freq=50, checkpoint_dir=""):
+        super(SaveImageCallback, self).__init__()
+        self.epoch = 0
+
+        self.steps = 0
+        self.freq = freq
+        self.checkpoint_dir = checkpoint_dir
+
+    def batch_end(self, batch, fwd_result, bwd_result):
+        if self.steps % self.freq != 0:
+            self.steps += 1
+            return
+
+        self.steps = 0
+
+        self.visualized_image(batch, fwd_result)
+        self.steps += 1
+
+    def visualized_image(self, batch, fwd_result):
+        lowspp = batch["low_spp"].detach()
+        target = batch["target_image"].detach()
+        output = fwd_result["radiance"].detach()
+
+        # Make sure images have the same size
+        lowspp = crop_like(lowspp, output)
+        target = crop_like(target, output)
+
+        # Assemble a display gallery
+        diff = (output-target).abs()
+        data = th.cat([lowspp, output, target, diff], -2)
+
+        # Clip and tonemap
+        data = th.clamp(data, 0)
+        data /= 1 + data
+        data = th.pow(data, 1.0/2.2)
+        data = th.clamp(data, 0, 1)
+
+        data_save = data[0, ...].cpu().detach().numpy().transpose([1, 2, 0])
+        
+        # Save a denoising of initialised network
+        os.makedirs(self.checkpoint_dir, exist_ok=True)
+        outputfile = os.path.join(self.checkpoint_dir, f'{time.time()}.png')
+        pyexr.write(outputfile, data_save)
+        
+        png = outputfile.replace(".exr", ".png")
+        skio.imsave(png, (np.clip(data_save, 0, 1)*255).astype(np.uint8))
+
+        return data
 
 class DenoisingDisplayCallback(ttools.ImageDisplayCallback):
     """A callback that periodically displays denoising results.

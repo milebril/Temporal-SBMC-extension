@@ -120,7 +120,8 @@ def create_scene_file(q, render_queue):
         try:
             gen = np.random.choice(params.gen)
             # while not gen.sample_sequence(scn, dst_dir, idx=idx):
-            while not gen.sample_cornellbox_scene(scn, dst_dir, idx=idx):
+            # while not gen.sample_cornellbox_scene(scn, dst_dir, idx=idx):
+            while not gen.sample_wall_Scene(scn, dst_dir, idx=idx):
                 attempt += 1
                 LOG.warning("Sampling another Scene {}".format(gen))
                 if attempt == max_attempts:
@@ -167,7 +168,7 @@ def create_scene_file(q, render_queue):
             render_queue.put(render_data, block=False)
 
             # Move camera in scene
-            scn.translate_camera([0, 0, -0.01])
+            scn.translate_camera([0.02, 0, 0])
 
         q.task_done()
         continue

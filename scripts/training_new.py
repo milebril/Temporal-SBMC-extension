@@ -93,7 +93,7 @@ def main(args):
     model.train()
 
     # Training params
-    num_epochs = 50
+    num_epochs = 200
 
     # Save randomly initialized model to compare with later epochs
     # save_checkpoint(model, optimizer, os.path.join(args.checkpoint_dir, "start.pth"), -1)

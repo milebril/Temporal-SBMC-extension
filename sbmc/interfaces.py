@@ -25,7 +25,7 @@ import torch as th
 from sbmc import losses
 from ttools.modules.image_operators import crop_like
 from torch.optim import lr_scheduler
-
+from tensorboardX import SummaryWriter
 
 LOG = ttools.get_logger(__name__)
 
@@ -60,6 +60,9 @@ class SampleBasedDenoiserInterface(ttools.ModelInterface):
         
         self.optimizer = th.optim.Adam(self.model.parameters(), lr=lr)
         self.scheduler = lr_scheduler.StepLR(self.optimizer, step_size=100, gamma=0.1)
+
+        # Tensorboard writer
+        self.writer = SummaryWriter()
 
     def forward(self, batch):
         """Runs a forward pass of the model.

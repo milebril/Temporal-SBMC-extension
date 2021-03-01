@@ -99,7 +99,7 @@ def main(args):
     checkpointer = ttools.Checkpointer(args.checkpoint_dir, model, meta=meta)
 
     extras, meta = checkpointer.load_latest()
-    print(extras, meta)
+    # print(extras, meta)
 
     # Try and load last completed training into the model
     # print(args.checkpoint_dir)
@@ -120,22 +120,24 @@ def main(args):
     freq = len(dataloader)
     trainer.add_callback(ttools.callbacks.ProgressBarCallback(log_keys))
     trainer.add_callback(ttools.callbacks.CheckpointingCallback(checkpointer,
-                                                                interval=None))
-    trainer.add_callback(ttools.callbacks.VisdomLoggingCallback(log_keys,
-                                                                env=args.env,
-                                                                port=args.port,
-                                                                log=True,
-                                                                frequency=freq))
-    trainer.add_callback(sbmc.DenoisingDisplayCallback(frequency=freq, 
-                                                       env=args.env,
-                                                       port=args.port,
-                                                       win="images",
-                                                       checkpoint_dir=args.checkpoint_dir))
+                                                                interval=freq*50, max_files=5))
+    # trainer.add_callback(ttools.callbacks.VisdomLoggingCallback(log_keys,
+    #                                                             env=args.env,
+    #                                                             port=args.port,
+    #                                                             log=True,
+    #                                                             frequency=freq))
+    # trainer.add_callback(sbmc.DenoisingDisplayCallback(frequency=freq, 
+    #                                                    env=args.env,
+    #                                                    port=args.port,
+    #                                                    win="images",
+    #                                                    checkpoint_dir=args.checkpoint_dir))
     trainer.add_callback(sbmc.SchedulerCallback(interface.scheduler))
+    trainer.add_callback(sbmc.TensorboardCallback(log_keys, interface.writer))
+    trainer.add_callback(sbmc.SaveImageCallback(freq=freq, checkpoint_dir=args.checkpoint_dir))
 
     # Launch the training
     LOG.info("Training started, 'Ctrl+C' to abort.")
-    trainer.train(dataloader, num_epochs=50,
+    trainer.train(dataloader, num_epochs=2,
                 val_dataloader=val_dataloader)
 
 """

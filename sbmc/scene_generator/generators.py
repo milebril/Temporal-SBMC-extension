@@ -716,6 +716,82 @@ class OutdoorSceneGenerator(SceneGenerator):
 
         return True
 
+    def sample_wall_Scene(self, scn, dst_dir, params=None, idx=0):
+        self._log.debug("Sampling Custom Plane Scene")
+        self._randomize_textures()
+
+        # Set Camera 
+        cam_position = [0.0, 0.0, 0.0]
+        cam_target = [0.0, 0.0, -1.0]
+        cam_up = [0.0, 1, 0]
+        cam_fov = np.random.uniform(40, 90) # Random FOV between 40-90
+
+        cam_params = {
+            "position": list(cam_position),
+            "target": list(cam_target),
+            "up": list(cam_up),
+            "fov": cam_fov
+        }
+
+
+        # Simple plane
+        obj = geometry.GoodPlane(scale=40)
+        xforms.rotate(obj, [1, 0, 0], 90)
+        xforms.translate(obj, [0, 0, -15])
+        mat = randomizers.random_material(id="random", textures_list=self._textures)
+        obj.assign_material(mat)    
+
+        scn.shapes.append(obj)
+        scn.materials.append(mat)
+
+        for _ in range(10):
+            # Fetch a random object from the library
+            dst = os.path.join(dst_dir, f"geometry_scene#{idx}")
+            mdl = np.random.choice(self._models)
+            pbrt_objects = self._converter(mdl, dst)
+
+            # Randomize the scale and position
+            scl = np.random.exponential(0.4)*np.ones((3,))
+            z_idx = np.random.randint(0, 2)
+            altitude = np.random.normal(0.1, 0.2)
+            position = [np.random.uniform(0, 5) - 2.5, np.random.uniform(0, 5) - 2.5, altitude]
+            # [-3, 3] [-3, 3], [-3, -8]
+            position = [np.random.uniform(0, 6) - 3, np.random.uniform(0, 6) - 3, np.random.uniform(0, 5) - 8]
+
+            # Obj files may contain multiple pieces, add them all
+            for obj in pbrt_objects:
+                geom = geometry.ExternalGeometry(os.path.join(dst_dir, f"geometry_scene#{idx}",
+                                                                obj.path))
+                xforms.rotate(geom, np.random.uniform(size=(3,)),
+                                np.random.uniform(0, 360))
+                xforms.scale(geom, scl)
+                xforms.translate(geom, position)
+
+                # Get a material for this piece
+                material = randomizers.random_material(
+                    id=obj.material.id, textures_list=self._textures)
+                scn.materials.append(material)
+
+                scn.shapes.append(geom)
+
+        light_geom = geometry.GoodPlane(scale=2)
+        xforms.rotate(light_geom, [1, 0, 0], -90)
+        xforms.translate(light_geom, [0, 0, 1])
+        light = lights.AreaLight(light_geom, spectrum=[100, 100, 100])
+        scn.lights.append(light)
+
+        # env = randomizers.random_envmap(self._envmaps, nsamples=8)
+        # xforms.rotate(env, [0, 0, 1], np.random.uniform(0, 360))
+        # scn.lights.append(env)
+
+        # Attach the camera to the scene
+        scn.camera = Camera(**cam_params)
+
+        self._log.debug("Generated Custom Plane Scene")
+
+        return True
+
+
 def _random_aperture(min_=0.001, max_=0.05):
     """Sample a camera aperture value, uniformly in log domain).
     Args:

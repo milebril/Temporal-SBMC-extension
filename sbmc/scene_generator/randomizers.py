@@ -206,7 +206,7 @@ def random_material(id=None, textures_list=None):
     if id is None:
         id = str(uuid.uuid4())
 
-    if p_tex > 0.15:  # 15% chance uniform
+    if p_tex > 0.01:  # 15% chance uniform
         tex = None
     else:
         tex = textures_list
@@ -225,7 +225,6 @@ def random_material(id=None, textures_list=None):
         return random_uber_material(id, tex)
 
     return random_diffuse_material(id, tex)
-
 
 def random_bump(ref_texture, textures_list):
     """Random bump map texture.

@@ -30,12 +30,14 @@ def main(args):
     dataloader = DataLoader(data, batch_size=1, shuffle=False, num_workers=0)
 
     # Load the two models
+    temp = th.load(f"{args.model1}", map_location=th.device('cpu'))
     model_one = sbmc.Multisteps(data.num_features, data.num_global_features)
-    # model_one, epoch1 = load_model(model_one, args.model1)
-    # model_one.train(False)
+    model_one.load_state_dict(temp['model'])
+    model_one.train(False)
 
+    temp = th.load(f"{args.model2}", map_location=th.device('cpu'))
     model_two = sbmc.Multisteps(data.num_features, data.num_global_features)
-    model_two, epoch2 = load_model(model_two, args.model2)
+    model_two.load_state_dict(temp['model'])
     model_two.train(False)
 
     device = "cuda" if th.cuda.is_available() else "cpu"

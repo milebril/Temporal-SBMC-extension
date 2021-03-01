@@ -172,7 +172,7 @@ generate_sequence_and_denoise:
 		$(OBJ2PBRT) \
 		$(DATA)/demo/scenegen_assets \
 		$(OUTPUT)/emil/training_sequence \
-		--count 1 --frames 1 --spp 512 --gt_spp 4 --width 256 --height 256 --no-clean 
+		--count 1 --frames 3 --spp 4 --gt_spp 4 --width 256 --height 256 --no-clean 
 	@cd $(OUTPUT)/emil/training_sequence && find . -name "*.bin" > filelist.txt
 	@python scripts/visualize_dataset.py \
 		$(OUTPUT)/emil/training_sequence/render_samples_seq \
@@ -190,7 +190,7 @@ generate_training_sequence:
 		$(OBJ2PBRT) \
 		$(DATA)/demo/scenegen_assets \
 		$(OUTPUT)/emil/training_sequence \
-		--count 5 --frames 5 --spp 4 --gt_spp 512 --width 128 --height 128 --no-clean
+		--count 20 --frames 5 --spp 4 --gt_spp 512 --width 128 --height 128 --no-clean
 	@cd $(OUTPUT)/emil/training_sequence && find . -name "*.bin" | sort > filelist.txt
 
 generate_validation_sequence:
@@ -256,14 +256,14 @@ train_sbmc:
 train_new_sbmc:
 	@python scripts/training_new.py \
 		--checkpoint_dir $(OUTPUT)/emil/training_sbmc_custom \
-		--data $(OUTPUT)/emil/training_sequence/filelist.txt \
+		--data $(OUTPUT)/emil/training_sequence_single/filelist.txt \
 		--env sbmc_ours --port 2001 --bs 1 --constant_spp\
 		--spp 4 --debug
 
 compare_models:
 	@python scripts/compare_models.py \
-		--model1 $(OUTPUT)/emil/compare/model1/training_end_400e.pth \
-		--model2 $(OUTPUT)/emil/compare/model2/training_end_custom_20e.pth \
+		--model1 $(OUTPUT)/emil/compare/model1/training_end.pth \
+		--model2 $(OUTPUT)/emil/compare/model2/final.pth \
 		--save_dir $(OUTPUT)/emil/compare/img \
 		--data $(OUTPUT)/emil/training_sequence/render_samples_seq
 
