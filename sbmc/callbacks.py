@@ -28,6 +28,7 @@ import skimage.io as skio
 
 from ttools.utils import ExponentialMovingAverage
 from ttools.modules.image_operators import crop_like
+from ttools.callbacks import KeyedCallback
 
 
 __all__ = ["DenoisingDisplayCallback", "SchedulerCallback", "TensorboardCallback", "SaveImageCallback"]
@@ -44,14 +45,12 @@ class SchedulerCallback(ttools.Callback):
     def epoch_end(self):
         self.scheduler.step()
 
-class TensorboardCallback(ttools.Callback):
+class TensorboardCallback(KeyedCallback):
     def __init__(self, log_keys, writer):
-        super(TensorboardCallback, self).__init__()
+        super(TensorboardCallback, self).__init__(keys=log_keys)
         self.log_keys = log_keys
         self.writer = writer
         self.epoch = 0
-
-        self.ema = ExponentialMovingAverage(self.log_keys, alpha=0.99)
 
     def epoch_start(self ,epoch_idx):
         self.epoch = epoch_idx  
