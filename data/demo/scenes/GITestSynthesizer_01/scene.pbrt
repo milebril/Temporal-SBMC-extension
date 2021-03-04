@@ -1,0 +1,72 @@
+LookAt 0 0 3  0 0 0  0 1 0
+Camera "perspective" "float fov" [45] "float shutteropen" [0.0] "float shutterclose" [0.0] "float lensradius" [0.0] "float focaldistance" [0.0]
+TransformTimes 0.0 1.0
+
+WorldBegin
+AttributeBegin
+AreaLightSource "diffuse" "rgb L" [1111.111111111111 1111.111111111111 1111.111111111111] "integer nsamples" [8]
+AttributeBegin
+Translate 0 0.97 0
+Shape "sphere" "float radius" [0.03]
+AttributeEnd
+AttributeEnd
+MakeNamedMaterial "mat1" "string type" "matte" "rgb Kd" [0.9 0.9 0.9]
+ MakeNamedMaterial "mat2" "string type" "matte" "rgb Kd" [0.2 0.9 0.2]
+ MakeNamedMaterial "mat3" "string type" "matte" "rgb Kd" [0.9 0.2 0.2]
+ MakeNamedMaterial "mat4" "string type" "matte" "rgb Kd" [0.9 0.9 0.9]
+ MakeNamedMaterial "mat5" "string type" "matte" "rgb Kd" [0.2 0.2 0.9]
+ MakeNamedMaterial "mat6" "string type" "glass"  "float index" [1.5] "rgb Kr" [1 1 1]
+"rgb Kt" [1 1 1]
+ MakeNamedMaterial "mat7" "string type" "mirror" "rgb Kr" [1 1 1]
+ AttributeBegin
+NamedMaterial "mat1"
+Translate 0 0 -1
+Rotate 90 0 1 0
+Shape "trianglemesh" "integer indices" [0 1 2 2 3 0]
+"point P" [0.0 -1.0 -1.0 0.0 -1.0 1.0 0.0 1.0 1.0 0.0 1.0 -1.0]
+AttributeEnd
+AttributeBegin
+NamedMaterial "mat2"
+Translate 1 0 0
+Shape "trianglemesh" "integer indices" [0 1 2 2 3 0]
+"point P" [0.0 -1.0 -1.0 0.0 -1.0 1.0 0.0 1.0 1.0 0.0 1.0 -1.0]
+AttributeEnd
+AttributeBegin
+NamedMaterial "mat3"
+Translate -1 0 0
+Shape "trianglemesh" "integer indices" [0 1 2 2 3 0]
+"point P" [0.0 -1.0 -1.0 0.0 -1.0 1.0 0.0 1.0 1.0 0.0 1.0 -1.0]
+AttributeEnd
+AttributeBegin
+NamedMaterial "mat4"
+Translate 0 1 0
+Rotate 90 0 0 1
+Shape "trianglemesh" "integer indices" [0 1 2 2 3 0]
+"point P" [0.0 -1.0 -1.0 0.0 -1.0 1.0 0.0 1.0 1.0 0.0 1.0 -1.0]
+AttributeEnd
+AttributeBegin
+NamedMaterial "mat4"
+Translate 0 -1 0
+Rotate 90 0 0 1
+Shape "trianglemesh" "integer indices" [0 1 2 2 3 0]
+"point P" [0.0 -1.0 -1.0 0.0 -1.0 1.0 0.0 1.0 1.0 0.0 1.0 -1.0]
+AttributeEnd
+AttributeBegin
+NamedMaterial "mat5"
+Translate 0.5 -0.6 0.2
+Shape "sphere" "float radius" [0.4]
+AttributeEnd
+AttributeBegin
+NamedMaterial "mat6"
+Translate -0.3 -0.8 -0.2
+Shape "sphere" "float radius" [0.2]
+AttributeEnd
+AttributeBegin
+NamedMaterial "mat7"
+Translate -0.5 -0.55 -0.6
+Rotate -60 0 1 0
+Rotate 10 0 0 1
+Shape "trianglemesh" "integer indices" [0 1 2 2 3 0]
+"point P" [0.0 -0.5 -0.5 0.0 -0.5 0.5 0.0 0.5 0.5 0.0 0.5 -0.5]
+AttributeEnd
+WorldEnd

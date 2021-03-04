@@ -1,4 +1,5 @@
-data
+data/pretrained_models
+data/demo/scenegen_assets/textures
 *.pyc
 output
 .DS_Store
@@ -20,5 +21,4 @@ halide/
 
 pbrt/
 
-models/
 runs/

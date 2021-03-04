@@ -1,0 +1,9 @@
+./models/sample/models/model_normalized.obj
+./models/sample/models/bunny_low.obj
+./models/sample/models/cube.obj
+./models/sample/models/tetrahedron.obj
+./models/sample/models/dodecahedron.obj
+./models/sample/models/torus.obj
+./models/sample/models/octahedron.obj
+./models/sample/models/teapot.obj
+./models/sample/models/venus.obj
