@@ -249,7 +249,7 @@ train_emil:
 train_sbmc:
 	@python scripts/train.py \
 		--checkpoint_dir $(OUTPUT)/emil/training_sbmc_theirs \
-				--data $(OUTPUT)/emil/training_sequence/filelist.txt \
+		--data $(OUTPUT)/emil/training_sequence/filelist.txt \
 		--env sbmc_ours --port 2001 --bs 1 --constant_spp\
 		--spp 4 --debug
 
@@ -258,6 +258,13 @@ train_new_sbmc:
 		--checkpoint_dir $(OUTPUT)/emil/training_sbmc_custom \
 		--data $(OUTPUT)/emil/training_sequence_single/filelist.txt \
 		--env sbmc_ours --port 2001 --bs 1 --constant_spp\
+		--spp 4 --debug
+
+train_new_peters:
+	@python scripts/training_new.py \
+		--checkpoint_dir $(OUTPUT)/emil/training_emil_custom \
+		--data $(OUTPUT)/emil/training_sequence/filelist.txt \
+		--env sbmc_ours --port 2001 --bs 1 --constant_spp --emil_mode \
 		--spp 4 --debug
 
 compare_models:

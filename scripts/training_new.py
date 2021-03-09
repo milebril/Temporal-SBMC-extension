@@ -93,10 +93,10 @@ def main(args):
     model.train()
 
     # Training params
-    num_epochs = 200
+    num_epochs = 2
 
     # Save randomly initialized model to compare with later epochs
-    # save_checkpoint(model, optimizer, os.path.join(args.checkpoint_dir, "start.pth"), -1)
+    save_checkpoint(model, optimizer, os.path.join(args.checkpoint_dir, "start.pth"), -1)
 
     total_loss = 0
     total_rmse = 0
@@ -122,6 +122,12 @@ def main(args):
             total_loss += loss.item()
             loss.backward()
 
+            for i in range(len(list(model.parameters()))):
+                t = list(model.parameters())[i].grad
+                print(t)
+                # if 'cpu' in str(t):
+                #     print(list(model.parameters())[i].grad)
+
             # Clip the gradiants
             clip = 1000
             actual = th.nn.utils.clip_grad_norm_(model.parameters(), clip)
@@ -130,7 +136,7 @@ def main(args):
 
             optimizer.step()
 
-            if batch_idx == 0 and epoch % 2 == 0:
+            if batch_idx == 0:
                 rad = output.detach()
                 save_img(rad, args.checkpoint_dir, str(epoch))
             
@@ -163,10 +169,13 @@ def main(args):
     # tmp_model = sbmc.Multisteps(data.num_features, data.num_global_features,
     #                             ksize=args.ksize, splat=not args.gather,
     #                             pixel=args.pixel)
-    # tmp_opt = th.optim.Adam(tmp_model.parameters(), lr=args.lr)
-    # load_checkpoint(tmp_model, tmp_opt, os.path.join(args.checkpoint_dir, "start.pth"))
-    # tmp_model.cuda()
-    # compare_models(model, tmp_model)
+    tmp_model = sbmc.RecurrentMultisteps(data.num_features, data.num_global_features,
+                                ksize=args.ksize, splat=not args.gather,
+                                pixel=args.pixel)
+    tmp_opt = th.optim.Adam(tmp_model.parameters(), lr=args.lr)
+    load_checkpoint(tmp_model, tmp_opt, os.path.join(args.checkpoint_dir, "start.pth"))
+    tmp_model.cuda()
+    compare_models(model, tmp_model)
 
 # Print iterations progress
 def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 50, fill = '█', printEnd = "\r"):

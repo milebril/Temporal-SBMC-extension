@@ -233,25 +233,8 @@ class Multisteps(nn.Module):
         # Recast to CUDA
         if (cast):
             self.cuda()
-            # sum_r = sum_r.clone().detach().requires_grad_(True).to('cuda')
-            # sum_w = sum_w.clone().detach().requires_grad_(True).to('cuda')
-            # max_w = max_w.clone().detach().requires_grad_(True).to('cuda')
-            # kernels = kernels.clone().detach().requires_grad_(True).to('cuda')
-            # sum_r = sum_r.cuda().detach().requires_grad_()
-            # sum_w = sum_w.cuda().detach().requires_grad_()
-            # max_w = max_w.cuda().detach().requires_grad_()
-            # kernels = kernels.cuda().detach().requires_grad_()
-
-            # sum_r = sum_r.to('cuda')
-            # sum_r.retain_grad()
-            # # sum_r = th.tensor(sum_r, requires_grad=True, retain_grad=True)
-            # # sum_r.cuda()
-            # sum_w = sum_w.to('cuda')
-            # max_w = max_w.to('cuda')
-            # kernels = kernels.to('cuda')
 
         output = sum_r / (sum_w + self.eps)
-        # output = output.cuda()
 
         if (cast):
             output = output.to('cuda')
@@ -443,12 +426,11 @@ class RecurrentMultisteps(nn.Module):
         # tensor.cuda() is used to move a tensor to GPU memory.
         # tensor.cpu() moves it back to memory accessible to the CPU.
         cast = 'cuda' in str(radiance.device)
+        cast = False
         if (cast):
-            # radiance_clone = radiance.clone().detach().requires_grad_(True).to('cpu')
-            # propagated_clone = propagated.clone().detach().requires_grad_(True).to('cpu')
             radiance_clone = radiance.to('cpu')
             propagated_clone = propagated.to('cpu')
-            self.to('cpu')
+            self.cpu()
 
         for sp in range(spp):
             if cast:
@@ -464,6 +446,7 @@ class RecurrentMultisteps(nn.Module):
             if limit_memory_usage:
                 if th.cuda.is_available():
                     th.cuda.empty_cache()
+
             # Update radiance estimate
             sum_r, sum_w, max_w = self.kernel_update(
                 crop_like(r, kernels), kernels, sum_r, sum_w, max_w)
@@ -471,21 +454,15 @@ class RecurrentMultisteps(nn.Module):
                 if th.cuda.is_available():
                     th.cuda.empty_cache()
         
-        # Normalize output with the running sum
-        if (cast):
-            sum_r = sum_r.clone().detach().requires_grad_(True).to('cuda')
-            sum_w = sum_w.clone().detach().requires_grad_(True).to('cuda')
-            max_w = max_w.clone().detach().requires_grad_(True).to('cuda')
-            kernels = kernels.clone().detach().requires_grad_(True).to('cuda')
-            # sum_r = sum_r.to('cuda')
-            # sum_w = sum_w.to('cuda')
-
-        output = sum_r / (sum_w + self.eps)
-        # output = output.cuda()
-
+        # Normalize output with the running sum        
         # Recast to CUDA
         if (cast):
-            self.to('cuda')
+            self.cuda()
+
+        output = sum_r / (sum_w + self.eps)
+
+        if (cast):
+            output = output.to('cuda')
 
         # Remove the invalid boundary data
         crop = (self.ksize - 1) // 2
