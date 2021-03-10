@@ -591,16 +591,15 @@ class RecurrentConvChain(nn.Module):
                 x = m(x)
                 
         self.hidden_tensor = x
-        # self.hidden_tensor.detach_()
 
         # Keep the hiddenstate to backprop through it
         # Reset the hidden state after a sequence is finished and detatch it
         self.passes += 1
         if (self.passes > 5):
             self.hidden_tensor = self.init_hidden(x)
-            self.hidden_tensor.detach_()
             self.passes = 0
-            print("Resetting hidden state")
+        
+        self.hidden_tensor.detach_()
 
         return x
     
