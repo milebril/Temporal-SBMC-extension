@@ -304,22 +304,22 @@ class RecurrentMultisteps(nn.Module):
             # U-net implements the pixel spatial propagation step
             # With recurrent connection in the first step
             # if step == self.nsteps-1:
-            if step == 0:
-                self.add_module("propagation_{:02d}".format(step), ops.RecurrentAutoencoder(
-                    self.embedding_width, width, num_levels=3, increase_factor=2.0,
-                    num_convs=3, width=width, ksize=3, output_type="leaky_relu",
-                    pooling="max"))
-            else:
-                self.add_module("propagation_{:02d}".format(step), ops.Autoencoder(
-                    self.embedding_width, width, num_levels=3, increase_factor=2.0,
-                    num_convs=3, width=width, ksize=3, output_type="leaky_relu",
-                    pooling="max"))
+            # if step == 0:
+            #     self.add_module("propagation_{:02d}".format(step), ops.RecurrentAutoencoder(
+            #         self.embedding_width, width, num_levels=3, increase_factor=2.0,
+            #         num_convs=3, width=width, ksize=3, output_type="leaky_relu",
+            #         pooling="max"))
+            # else:
+            #     self.add_module("propagation_{:02d}".format(step), ops.Autoencoder(
+            #         self.embedding_width, width, num_levels=3, increase_factor=2.0,
+            #         num_convs=3, width=width, ksize=3, output_type="leaky_relu",
+            #         pooling="max"))
 
             # Adding recurrent connections to every step
-            # self.add_module("propagation_{:02d}".format(step), ops.RecurrentAutoencoder(
-            #     self.embedding_width, width, num_levels=3, increase_factor=2.0,
-            #     num_convs=3, width=width, ksize=3, output_type="leaky_relu",
-            #     pooling="max"))
+            self.add_module("propagation_{:02d}".format(step), ops.RecurrentAutoencoder(
+                self.embedding_width, width, num_levels=3, increase_factor=2.0,
+                num_convs=3, width=width, ksize=3, output_type="leaky_relu",
+                pooling="max"))
 
         # Final regression for the per-sample kernel (also 1x1 convs)
         # Generate the Kernel used for splatting
