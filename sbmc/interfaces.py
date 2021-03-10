@@ -87,7 +87,8 @@ class SampleBasedDenoiserInterface(ttools.ModelInterface):
         tgt = crop_like(batch["target_image"], out)  # make sure sizes match
         
         loss = self.loss_fn(out, tgt)
-        loss.backward()
+        # loss.backward()
+        loss.backward(retain_graph=True)
 
         # Couple checks to pick up on outliers in the data.
         if not np.isfinite(loss.data.item()):

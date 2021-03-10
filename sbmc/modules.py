@@ -190,9 +190,6 @@ class ConvChain(nn.Module):
             out = self.layer(x)
             return out
 
-"""
-    Aan de encode part van deze autoencoder RNN toevoegen rond de convolution stap
-"""
 class Autoencoder(nn.Module):
     """A U-net style autoencoder.
 
@@ -320,7 +317,6 @@ class Autoencoder(nn.Module):
             output = self.right(concat)
             return output
 
-
 class KernelApply(nn.Module):
     """Applies kernel-based averaging to input tensor.
 
@@ -366,7 +362,6 @@ class KernelApply(nn.Module):
         sum_w = sum_w.to('cuda')
         sum_w = sum_w.unsqueeze(1)
         return output, sum_w
-
 
 class ProgressiveKernelApply(nn.Module):
     """Applies progressive kernel-based averaging to input tensor.
@@ -583,10 +578,12 @@ class RecurrentConvChain(nn.Module):
             raise ValueError("Unknon output type '{}'".format(output_type))
 
         self.hidden_tensor = None
+        self.passes = 0
 
     def forward(self, x):
         if type(self.hidden_tensor) == type(None):
             self.hidden_tensor = self.init_hidden(x)
+
         for idx, m in enumerate(self.children()):
             if idx == 0:
                 x = m(th.cat([x, self.hidden_tensor], 1))
@@ -594,7 +591,15 @@ class RecurrentConvChain(nn.Module):
                 x = m(x)
                 
         self.hidden_tensor = x
-        self.hidden_tensor.detach_()
+        # self.hidden_tensor.detach_()
+
+        # Keep the hiddenstate to backprop through it
+        # Reset the hidden state after a sequence is finished and detatch it
+        self.passes += 1
+        if (self.passes > 5):
+            self.hidden_tensor = self.init_hidden(x)
+            self.hidden_tensor.detach_()
+
         return x
     
     def init_hidden(self, tensor):
