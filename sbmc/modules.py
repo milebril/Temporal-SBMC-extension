@@ -599,6 +599,8 @@ class RecurrentConvChain(nn.Module):
         if (self.passes > 5):
             self.hidden_tensor = self.init_hidden(x)
             self.hidden_tensor.detach_()
+            self.passes = 0
+            print("Resetting hidden state")
 
         return x
     
