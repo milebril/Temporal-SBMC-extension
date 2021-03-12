@@ -99,16 +99,15 @@ def main(args):
     checkpointer = ttools.Checkpointer(args.checkpoint_dir, model, meta=meta)
 
     extras, meta = checkpointer.load_latest()
-    # print(extras, meta)
+
+    # Load the parameters from pretraind model
+    model = load_sbmc(model)
 
     # Try and load last completed training into the model
     # print(args.checkpoint_dir)
     # model_location =  os.path.join(args.checkpoint_dir, "training_end.pth")
     # if os.path.isfile(model_location):
     #     model.load_state_dict(th.load(model_location, map_location=th.device('cpu'))['model'])
-
-    # interface = sbmc.SampleBasedDenoiserInterface(
-    #     model, lr=args.lr, cuda=False)
 
     interface = sbmc.SampleBasedDenoiserInterface(
         model, lr=args.lr, cuda=True)
@@ -151,6 +150,29 @@ def get_n_params(model):
             nn = nn*s
         pp += nn
     return pp
+
+def load_sbmc(model):
+    LOG.info("Loading SBMC weights into Temporal model")
+    gharbi = "data/pretrained_models/gharbi2019_sbmc/final.pth"
+    pre_trained_model = th.load(gharbi, map_location=th.device('cpu'))
+    new = list(pre_trained_model['model'].items())
+    my_model_kvpair = model.state_dict()
+
+    count=0
+    for key,value in my_model_kvpair.items():
+        layer_name, weights = new[count]
+
+        # Skip the modules with recurrent connections   
+        # if 'propagation_02' in layer_name and 'left' in layer_name:
+        if 'propagation' in layer_name:
+            count+=1
+            continue
+        # print(f"Layer: {layer_name}")
+        my_model_kvpair[key] = weights
+        count+=1
+
+    model.load_state_dict(my_model_kvpair)
+    return model
 
 if __name__ == "__main__":
     parser = ttools.BasicArgumentParser()

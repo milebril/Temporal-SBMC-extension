@@ -602,7 +602,7 @@ class RecurrentConvChain(nn.Module):
 
         # For CUDA out of memory purposes:
         # Backprop through time for 2 frames then detach
-        if self.passes == 3:
+        if self.passes == 2 or self.passes == 4:
             self.hidden_tensor.detach_()
 
         return x
