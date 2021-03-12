@@ -598,8 +598,12 @@ class RecurrentConvChain(nn.Module):
         if (self.passes > 5):
             self.hidden_tensor = self.init_hidden(x)
             self.passes = 0
-        
-        self.hidden_tensor.detach_()
+            self.hidden_tensor.detach_()
+
+        # For CUDA out of memory purposes:
+        # Backprop through time for 2 frames then detach
+        if self.passes == 3:
+            self.hidden_tensor.detach_()
 
         return x
     

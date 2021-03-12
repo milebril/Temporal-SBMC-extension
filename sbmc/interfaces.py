@@ -59,7 +59,7 @@ class SampleBasedDenoiserInterface(ttools.ModelInterface):
             self.rmse_fn.cuda()
         
         self.optimizer = th.optim.Adam(self.model.parameters(), lr=lr)
-        self.scheduler = lr_scheduler.StepLR(self.optimizer, step_size=100, gamma=0.1)
+        # self.scheduler = lr_scheduler.StepLR(self.optimizer, step_size=100, gamma=0.1)
 
         # Tensorboard writer
         self.writer = SummaryWriter()
@@ -87,8 +87,8 @@ class SampleBasedDenoiserInterface(ttools.ModelInterface):
         tgt = crop_like(batch["target_image"], out)  # make sure sizes match
         
         loss = self.loss_fn(out, tgt)
-        loss.backward()
-        # loss.backward(retain_graph=True)
+        # loss.backward()
+        loss.backward(retain_graph=True)
 
         # Couple checks to pick up on outliers in the data.
         if not np.isfinite(loss.data.item()):

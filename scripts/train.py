@@ -131,13 +131,13 @@ def main(args):
     #                                                    port=args.port,
     #                                                    win="images",
     #                                                    checkpoint_dir=args.checkpoint_dir))
-    trainer.add_callback(sbmc.SchedulerCallback(interface.scheduler))
+    # trainer.add_callback(sbmc.SchedulerCallback(interface.scheduler))
     trainer.add_callback(sbmc.TensorboardCallback(log_keys, interface.writer))
     trainer.add_callback(sbmc.SaveImageCallback(freq=freq, checkpoint_dir=args.checkpoint_dir))
 
     # Launch the training
     LOG.info("Training started, 'Ctrl+C' to abort.")
-    trainer.train(dataloader, num_epochs=1,
+    trainer.train(dataloader, num_epochs=1500,
                 val_dataloader=val_dataloader)
 
 """

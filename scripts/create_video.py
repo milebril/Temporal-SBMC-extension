@@ -1,7 +1,7 @@
 import ffmpeg
 
-input_dir = '/home/emil/Documents/Remote-SBMC/output/emil/training_peters_theirs/*.png'
-output_dir = '/home/emil/Desktop/output_peters.mp4'
+input_dir = '/home/emil/Documents/Remote-SBMC/output/emil/training_peters_last/*.png'
+output_dir = '/home/emil/Desktop/output_peters_last.mp4'
 
 (
     ffmpeg

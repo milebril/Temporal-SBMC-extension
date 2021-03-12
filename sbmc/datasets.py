@@ -271,11 +271,9 @@ class TilesDataset(Dataset):
             self.io_mode = TilesDataset.FOLDERS_MODE
             LOG.debug("Dataset in folder mode")
             self.root = path
-            print(self.root)
             # The scenes are subdirectories of the root
             scenes = [os.path.join(path, d) for d in
                       sorted(os.listdir(self.root))]
-            print(scenes)
             self.scenes = [s for s in scenes if os.path.isdir(s)]
             self.tiles = {}
             self.indices = {}
@@ -907,7 +905,6 @@ class FullImagesDataset(Dataset):
     More details in :class:`TilesDataset`
     """
     def __init__(self, *args, **kwargs):
-        print(*args)
         self.tiles_dset = TilesDataset(*args, **kwargs)
         if self.tiles_dset.io_mode != TilesDataset.FOLDERS_MODE:
             LOG.error("Full image dataset needs to point to a folder"

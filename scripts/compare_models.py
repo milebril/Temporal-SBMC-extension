@@ -1,5 +1,6 @@
 import numpy as np
 import torch as th
+import cv2
 import argparse
 import tempfile
 from torch.utils.data import DataLoader
@@ -31,7 +32,8 @@ def main(args):
 
     # Load the two models
     temp = th.load(f"{args.model1}", map_location=th.device('cpu'))
-    model_one = sbmc.Multisteps(data.num_features, data.num_global_features)
+    # model_one = sbmc.Multisteps(data.num_features, data.num_global_features)
+    model_one = sbmc.RecurrentMultisteps(data.num_features, data.num_global_features)
     model_one.load_state_dict(temp['model'])
     model_one.train(False)
 
@@ -50,6 +52,9 @@ def main(args):
     rmse_checker.to(device)
 
     for batch_idx, batch in enumerate(dataloader):
+        if batch_idx >= args.amount:
+            break
+
         for k in batch.keys():
             if not batch[k].__class__ == th.Tensor:
                 continue
@@ -78,7 +83,24 @@ def main(args):
         save_img(output1, output2, low_spp, tgt, args.save_dir, str(batch_idx))
 
 def save_img(radiance1, radiance2, low_radiance, tgt, checkpoint_dir, name):
-    data = th.cat([low_radiance, radiance1, radiance2, tgt], -2)
+    tmp_empty = th.zeros_like(radiance1) # Empty filler tensor
+
+    # Difference between models and ground thruth
+    diff_model1 = (radiance1 - tgt).abs()
+    diff_model2 = (radiance2 - tgt).abs()
+
+    # Create output data in the form:
+    #   low spp input -- 
+    #   ouput model1  -- Diff with tgt
+    #   ouput model2  -- Diff with tgt
+    #   tgt           -- 
+    first_row  = th.cat([tmp_empty, low_radiance, tmp_empty], -1)
+    second_row = th.cat([tmp_empty, radiance1,    diff_model1], -1)
+    third_row  = th.cat([tmp_empty, radiance2,    diff_model2], -1)
+    fourth_row = th.cat([tmp_empty, tgt,          tmp_empty], -1)
+
+    # Concate the data in a vertical stack
+    data = th.cat([first_row, second_row, third_row, fourth_row], -2)
 
     data = th.clamp(data, 0)
     data /= 1 + data
@@ -86,6 +108,15 @@ def save_img(radiance1, radiance2, low_radiance, tgt, checkpoint_dir, name):
     data = th.clamp(data, 0, 1)
 
     data = data[0, ...].cpu().detach().numpy().transpose([1, 2, 0])
+    data = np.ascontiguousarray(data)
+
+    # Add text to the images
+    jump = radiance1.size()[2]
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    cv2.putText(data, '4spp', (10, jump * 0 + 50), font, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+    cv2.putText(data, 'Model 1', (10, jump * 1 + 50), font, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+    cv2.putText(data, 'Model 2', (10, jump * 2 + 50), font, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+    cv2.putText(data, 'Target', (10, jump * 3 + 50), font, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
 
     os.makedirs(checkpoint_dir, exist_ok=True)
     outputfile = os.path.join(checkpoint_dir, f'{name}.png')
@@ -112,6 +143,8 @@ if __name__ == "__main__":
         '--save_dir', required=True, help="path to the dir where everything has to be saved")
     parser.add_argument(
         '--data', required=True, help="path to the training data.")
+    parser.add_argument(
+        '--amount', required=False, type=int,default=1, help="Amount of frames to denoise and compare")
 
     parser.add_argument('--spp', type=int,
                     help="number of samples to use as input.")

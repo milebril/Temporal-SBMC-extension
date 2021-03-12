@@ -241,7 +241,7 @@ denoise_sequence_peters:
 
 train_emil:
 	@python scripts/train.py \
-		--checkpoint_dir $(OUTPUT)/emil/training_peters_retain \
+		--checkpoint_dir $(OUTPUT)/emil/training_peters_retain_all \
 		--data $(OUTPUT)/emil/training_sequence/filelist.txt \
 		--env sbmc_ours --port 2001 --bs 1 --constant_spp --emil_mode\
 		--spp 4
@@ -269,10 +269,11 @@ train_new_peters:
 
 compare_models:
 	@python scripts/compare_models.py \
-		--model1 $(OUTPUT)/emil/compare/model1/training_end.pth \
-		--model2 $(OUTPUT)/emil/compare/model2/final.pth \
+		--model1 $(OUTPUT)/emil/compare/model1/peters_all.pth \
+		--model2 $(OUTPUT)/emil/compare/model2/SBMC_END.pth \
 		--save_dir $(OUTPUT)/emil/compare/img \
-		--data $(OUTPUT)/emil/training_sequence/render_samples_seq
+		--data $(OUTPUT)/emil/training_sequence/render_samples_seq \
+		--amount 5
 
 # custom_train_sbmc:
 # 	@python scripts/custom_training.py \
