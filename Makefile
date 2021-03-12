@@ -184,14 +184,14 @@ generate_sequence_and_denoise:
 		--checkpoint $(DATA)/pretrained_models/gharbi2019_sbmc
 
 generate_training_sequence:
-	@rm -rf $(OUTPUT)/emil/training_sequence
+	@rm -rf $(OUTPUT)/emil/training_sequence_single_scene
 	@python scripts/generate_training_sequence.py \
 		$(PBRT) \
 		$(OBJ2PBRT) \
 		$(DATA)/demo/scenegen_assets \
-		$(OUTPUT)/emil/training_sequence \
-		--count 20 --frames 5 --spp 4 --gt_spp 512 --width 128 --height 128 --no-clean
-	@cd $(OUTPUT)/emil/training_sequence && find . -name "*.bin" | sort > filelist.txt
+		$(OUTPUT)/emil/training_sequence_single_scene \
+		--count 1 --frames 20 --spp 4 --gt_spp 512 --width 128 --height 128 --no-clean
+	@cd $(OUTPUT)/emil/training_sequence_single_scene && find . -name "*.bin" | sort > filelist.txt
 
 generate_validation_sequence:
 	@rm -rf $(OUTPUT)/emil/validation_sequence
@@ -241,8 +241,8 @@ denoise_sequence_peters:
 
 train_emil:
 	@python scripts/train.py \
-		--checkpoint_dir $(OUTPUT)/emil/training_peters_all_loaded \
-		--data $(OUTPUT)/emil/training_sequence/filelist.txt \
+		--checkpoint_dir $(OUTPUT)/emil/training_peters_all_loaded_single \
+		--data $(OUTPUT)/emil/training_sequence_single_scene/filelist.txt \
 		--env sbmc_ours --port 2001 --bs 1 --constant_spp --emil_mode\
 		--spp 4
 		

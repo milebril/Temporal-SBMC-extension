@@ -136,7 +136,7 @@ def main(args):
 
     # Launch the training
     LOG.info("Training started, 'Ctrl+C' to abort.")
-    trainer.train(dataloader, num_epochs=1500,
+    trainer.train(dataloader, num_epochs=3000,
                 val_dataloader=val_dataloader)
 
 """
