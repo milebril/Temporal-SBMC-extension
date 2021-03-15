@@ -36,12 +36,11 @@ def _save(output, imname, imdata, dtype=np.uint8):
     path = os.path.join(output, imname)
     skio.imsave(path, ttools.utils.tensor2image(imdata, dtype=dtype))
 
-
 def main(args):
     data = FullImagesDataset(args.data_dir, spp=args.spp)
     # data = TilesDataset(args.data_dir, spp=args.spp)
 
-    dataloader = DataLoader(data, batch_size=1, shuffle=False, num_workers=4)
+    dataloader = DataLoader(data, batch_size=1, shuffle=False, num_workers=1)
 
     LOG.info("Visualizing dataset with %d spp (gt_spp = %d)",
              data.spp, data.gt_sample_count)

@@ -184,14 +184,14 @@ generate_sequence_and_denoise:
 		--checkpoint $(DATA)/pretrained_models/gharbi2019_sbmc
 
 generate_training_sequence:
-	@rm -rf $(OUTPUT)/emil/training_sequence_single_scene
+	@rm -rf $(OUTPUT)/emil/training_sequence_single_scene_big
 	@python scripts/generate_training_sequence.py \
 		$(PBRT) \
 		$(OBJ2PBRT) \
 		$(DATA)/demo/scenegen_assets \
-		$(OUTPUT)/emil/training_sequence_single_scene \
-		--count 1 --frames 20 --spp 4 --gt_spp 512 --width 128 --height 128 --no-clean
-	@cd $(OUTPUT)/emil/training_sequence_single_scene && find . -name "*.bin" | sort > filelist.txt
+		$(OUTPUT)/emil/training_sequence_single_scene_big \
+		--count 1 --frames 20 --spp 4 --gt_spp 512 --width 512 --height 512 --no-clean
+	@cd $(OUTPUT)/emil/training_sequence_single_scene_big && find . -name "*.bin" | sort -V > filelist.txt
 
 generate_validation_sequence:
 	@rm -rf $(OUTPUT)/emil/validation_sequence
@@ -200,44 +200,31 @@ generate_validation_sequence:
 		$(OBJ2PBRT) \
 		$(DATA)/demo/scenegen_assets \
 		$(OUTPUT)/emil/validation_sequence \
-		--count 2 --frames 1 --spp 4 --gt_spp 512 --width 256 --height 256 --no-clean
-	@cd $(OUTPUT)/emil/validation_sequence && find . -name "*.bin" | sort > filelist.txt
+		--count 3 --frames 3 --spp 4 --gt_spp 1024 --width 256 --height 256 --no-clean
+	@cd $(OUTPUT)/emil/validation_sequence && find . -name "*.bin" | sort -V > filelist.txt
 
 visualize_sequence:
 	@python scripts/visualize_dataset.py \
-		$(OUTPUT)/emil/validation_sequence/render_samples_seq \
-		$(OUTPUT)/emil/dataviz_val_sequence --spp 4
-		# $(OUTPUT)/emil/training_sequence/render_samples_seq \
-		# $(OUTPUT)/emil/dataviz_sequence --spp 4
+		$(OUTPUT)/emil/training_sequence_single_scene_big/render_samples_seq \
+		$(OUTPUT)/emil/dataviz_sequence --spp 4
+		# $(OUTPUT)/emil/validation_sequence/render_samples_seq \
+		# $(OUTPUT)/emil/dataviz_val_sequence --spp 4
 
-denoise_sequence:
+denoise_sequence_pretrained:
 	@python scripts/denoise.py \
-		--input $(OUTPUT)/emil/training_sequence/render_samples_seq \
-		--output $(OUTPUT)/emil/dataviz_sequence/denoised/ \
+		--input $(OUTPUT)/emil/training_sequence_single_scene_big/render_samples_seq \
+		--output $(OUTPUT)/emil/dataviz_sequence/denoised/pretrained/ \
 		--spp 4 --sequence \
 		--checkpoint $(DATA)/pretrained_models/gharbi2019_sbmc \
-		--frames 5
-# --input $(OUTPUT)/emil/validation_sequence/render_samples_seq \
-# 		--output $(OUTPUT)/emil/dataviz_val_sequence/denoised/ \
-
-denoise_sequence_trained:
-	@python scripts/denoise.py \
-		--input $(OUTPUT)/emil/training_sequence_cornell/render_samples_seq \
-		--output $(OUTPUT)/emil/dataviz_sequence/denoised/ \
-		--spp 4 --sequence \
-		--checkpoint $(OUTPUT)/emil/training_sbmc_succesfull_150epochs \
-		--frames 40
-		#--checkpoint $(OUTPUT)/emil/training_sbmc_theirs_200epochs \
+		--frames 12
 
 denoise_sequence_peters:
 	@python scripts/denoise.py \
-		--input $(OUTPUT)/emil/training_sequence/render_samples_seq \
-		--output $(OUTPUT)/emil/dataviz_sequence/denoised/ \
+		--input $(OUTPUT)/emil/training_sequence_single_scene_big/render_samples_seq \
+		--output $(OUTPUT)/emil/dataviz_sequence/denoised/peters/ \
 		--spp 4 --sequence --temporal \
-		--checkpoint $(OUTPUT)/emil/training_peters_theirs_30epoch/ \
-		--frames 5
-		# --input $(OUTPUT)/emil/validation_sequence/render_samples_seq \
-		# --output $(OUTPUT)/emil/dataviz_val_sequence/denoised/ \
+		--checkpoint $(OUTPUT)/emil/trained_models/peters_all_loaded.pth \
+		--frames 12
 
 train_emil:
 	@python scripts/train.py \
@@ -269,25 +256,11 @@ train_new_peters:
 
 compare_models:
 	@python scripts/compare_models.py \
-		--model1 $(OUTPUT)/emil/compare/model1/peters_all.pth \
-		--model2 $(OUTPUT)/emil/compare/model2/SBMC_END.pth \
+		--model1 $(OUTPUT)/emil/compare/model1/peters_all_loaded.pth \
+		--model2 $(OUTPUT)/emil/compare/model2/final_pretrained.pth \
 		--save_dir $(OUTPUT)/emil/compare/img \
 		--data $(OUTPUT)/emil/training_sequence/render_samples_seq \
 		--amount 5
-
-# custom_train_sbmc:
-# 	@python scripts/custom_training.py \
-# 		--checkpoint_dir $(OUTPUT)/emil/custom_training_sbmc \
-# 		--data $(OUTPUT)/emil/training_sequence/filelist.txt \
-# 		--env sbmc_ours --port 2001 --bs 1 --constant_spp\
-# 		--spp 4 --debug
-
-# custom_train_emil:
-# 	@python scripts/custom_training.py \
-# 		--checkpoint_dir $(OUTPUT)/emil/custom_training_peters \
-# 		--data $(OUTPUT)/emil/training_sequence/filelist.txt \
-# 		--env sbmc_ours --port 2001 --bs 1 --emil_mode --constant_spp\
-# 		--spp 4 --debug
 
 demo/train:
 	@python scripts/train.py \

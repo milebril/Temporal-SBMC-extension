@@ -272,8 +272,20 @@ class TilesDataset(Dataset):
             LOG.debug("Dataset in folder mode")
             self.root = path
             # The scenes are subdirectories of the root
+            # scenes = [os.path.join(path, d) for d in
+            #           sorted(os.listdir(self.root))]
+            def myKeyFunc(folder):
+                last = folder.split("/")[-1]
+                parts = last.split("-")
+    
+                first_num = parts[1].split("_")[0]
+                last_num = parts[-1]
+
+                return int(first_num + last_num)
+
             scenes = [os.path.join(path, d) for d in
-                      sorted(os.listdir(self.root))]
+                      sorted(os.listdir(self.root), key=myKeyFunc)]
+            # print(scenes)
             self.scenes = [s for s in scenes if os.path.isdir(s)]
             self.tiles = {}
             self.indices = {}

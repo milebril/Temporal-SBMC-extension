@@ -604,6 +604,10 @@ class RecurrentConvChain(nn.Module):
         # Backprop through time for 2 frames then detach
         if self.passes == 2 or self.passes == 4:
             self.hidden_tensor.detach_()
+        
+        if not self.training:
+            print("HIER")
+            self.hidden_tensor.detach_()
 
         return x
     

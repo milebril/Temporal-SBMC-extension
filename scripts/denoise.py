@@ -109,7 +109,12 @@ def denoise(args, input_root="", output_root=""):
     os.symlink(data_root, os.path.join(tmpdir, name))
 
     LOG.info("Loading model {}".format(args.checkpoint))
-    meta_params = ttools.Checkpointer.load_meta(args.checkpoint)
+    if os.path.isdir(args.checkpoint):
+        meta_params = ttools.Checkpointer.load_meta(args.checkpoint)
+    else:
+        temp = th.load(f"{args.checkpoint}", map_location=th.device('cpu'))
+        meta_params = temp['meta']
+    
 
     LOG.info("Setting up dataloader")
     data_params = meta_params["data_params"]
@@ -117,10 +122,15 @@ def denoise(args, input_root="", output_root=""):
         data_params["spp"] = args.spp
 
     # Load the dataset
-    if args.sequence:
-        data = sbmc.FullImagesDataset(os.path.join(tmpdir, name), **data_params)
-    else:
-        data = sbmc.FullImagesDataset(tmpdir, **data_params)
+    if os.path.isdir(args.input):
+        # if args.sequence:
+        #     data = sbmc.FullImagesDataset(os.path.join(tmpdir, name), **data_params)
+        # else:
+        #     data = sbmc.FullImagesDataset(tmpdir, **data_params)
+        data = sbmc.FullImagesDataset(args.input, **data_params)
+    else: 
+        data = sbmc.TilesDataset(args.input, **data_params)
+
     dataloader = DataLoader(data, batch_size=1, shuffle=False, num_workers=0)
 
     LOG.info("Denoising input with {} spp".format(data_params["spp"]))
@@ -142,6 +152,18 @@ def denoise(args, input_root="", output_root=""):
     # print(sum(p.numel() for p in model.parameters() if p.requires_grad))
     # return
 
+    # Load the latest model from a directory
+    # Or load the model if it's given directly
+    if os.path.isdir(args.checkpoint):
+        checkpointer = ttools.Checkpointer(args.checkpoint, model, None)
+        extras, meta = checkpointer.load_latest()
+        LOG.info("Loading latest checkpoint {}".format(
+            "failed" if meta is None else "success"))
+    else:
+        temp = th.load(f"{args.checkpoint}", map_location=th.device('cpu'))
+        model.load_state_dict(temp['model'])
+        LOG.info("Model loading successful")
+
     model.train(False)
     device = "cpu"
     cuda = th.cuda.is_available()
@@ -151,18 +173,22 @@ def denoise(args, input_root="", output_root=""):
         model.cuda()
         device = "cuda"
 
-    checkpointer = ttools.Checkpointer(args.checkpoint, model, None)
-    extras, meta = checkpointer.load_latest()
-    LOG.info("Loading latest checkpoint {}".format(
-        "failed" if meta is None else "success"))
-
     elapsed = (time.time() - start) * 1000
     LOG.info("setup time {:.1f} ms".format(elapsed))
 
     if args.sequence:
-        scene_names = [f.path for f in os.scandir(data_root) if f.is_dir()] # Used to get the correct scene name
-        scene_names.sort()
-        # scene_names.reverse()
+        def myKeyFunc(folder):
+            last = folder.split("/")[-1]
+            parts = last.split("-")
+
+            first_num = parts[1].split("_")[0]
+            last_num = parts[-1]
+
+            return int(first_num + last_num)
+
+        scene_names = [d for d in
+                    sorted(os.listdir(args.input), key=myKeyFunc)]
+        # print(scene_names)
 
     output_base = args.output
 
@@ -198,10 +224,10 @@ def denoise(args, input_root="", output_root=""):
         out = out_radiance
         tgt = crop_like(batch["target_image"], out)  # make sure sizes match
         loss = losses.RelativeMSE().forward(out, tgt)
-        print("RMSE: ", loss.item())
+        LOG.info(f"RMSE:  {loss.item()}")
 
         # Change location if sequence is to be denoised
-        print(scene_id, scene_names[scene_id].split('/')[-1] + ".png")
+        # print(scene_id, scene_names[scene_id].split('/')[-1] + ".png")
         if args.sequence:
             mode = "sbmc"
             if args.temporal:
