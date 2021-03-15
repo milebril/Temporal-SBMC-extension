@@ -216,7 +216,7 @@ denoise_sequence_pretrained:
 		--output $(OUTPUT)/emil/dataviz_sequence/denoised/pretrained/ \
 		--spp 4 --sequence \
 		--checkpoint $(DATA)/pretrained_models/gharbi2019_sbmc \
-		--frames 12
+		--frames 30
 
 denoise_sequence_peters:
 	@python scripts/denoise.py \
@@ -224,7 +224,7 @@ denoise_sequence_peters:
 		--output $(OUTPUT)/emil/dataviz_sequence/denoised/peters/ \
 		--spp 4 --sequence --temporal \
 		--checkpoint $(OUTPUT)/emil/trained_models/peters_all_loaded.pth \
-		--frames 12
+		--frames 30
 
 train_emil:
 	@python scripts/train.py \
@@ -259,8 +259,8 @@ compare_models:
 		--model1 $(OUTPUT)/emil/compare/model1/peters_all_loaded.pth \
 		--model2 $(OUTPUT)/emil/compare/model2/final_pretrained.pth \
 		--save_dir $(OUTPUT)/emil/compare/img \
-		--data $(OUTPUT)/emil/training_sequence/render_samples_seq \
-		--amount 5
+		--data $(OUTPUT)/emil/training_sequence_single_scene_big/render_samples_seq \
+		--amount 10
 
 demo/train:
 	@python scripts/train.py \
