@@ -606,7 +606,6 @@ class RecurrentConvChain(nn.Module):
             self.hidden_tensor.detach_()
         
         if not self.training:
-            print("HIER")
             self.hidden_tensor.detach_()
 
         return x

@@ -184,47 +184,50 @@ generate_sequence_and_denoise:
 		--checkpoint $(DATA)/pretrained_models/gharbi2019_sbmc
 
 generate_training_sequence:
-	@rm -rf $(OUTPUT)/emil/training_sequence_single_scene_big
+	@rm -rf $(OUTPUT)/emil/validation_sequence_tmp
 	@python scripts/generate_training_sequence.py \
 		$(PBRT) \
 		$(OBJ2PBRT) \
 		$(DATA)/demo/scenegen_assets \
-		$(OUTPUT)/emil/training_sequence_single_scene_big \
-		--count 1 --frames 20 --spp 4 --gt_spp 512 --width 512 --height 512 --no-clean
-	@cd $(OUTPUT)/emil/training_sequence_single_scene_big && find . -name "*.bin" | sort -V > filelist.txt
+		$(OUTPUT)/emil/training_sequence_tmp \
+		--count 1 --frames 5 --spp 4 --gt_spp 512 --width 256 --height 256 --no-clean
+	@cd $(OUTPUT)/emil/training_sequence_tmp && find . -name "*.bin" | sort -V > filelist.txt
 
 generate_validation_sequence:
-	@rm -rf $(OUTPUT)/emil/validation_sequence
+	@rm -rf $(OUTPUT)/emil/validation_sequence_wall
 	@python scripts/generate_training_sequence.py \
 		$(PBRT) \
 		$(OBJ2PBRT) \
 		$(DATA)/demo/scenegen_assets \
-		$(OUTPUT)/emil/validation_sequence \
-		--count 3 --frames 3 --spp 4 --gt_spp 1024 --width 256 --height 256 --no-clean
-	@cd $(OUTPUT)/emil/validation_sequence && find . -name "*.bin" | sort -V > filelist.txt
+		$(OUTPUT)/emil/validation_sequence_wall \
+		--count 1 --frames 10 --spp 4 --gt_spp 1024 --width 256 --height 256 --no-clean
+	@cd $(OUTPUT)/emil/validation_sequence_wall && find . -name "*.bin" | sort -V > filelist.txt
+
+show_all: visualize_sequence denoise_sequence_pretrained denoise_sequence_peters 
+	@python scripts/make_compare_video.py 
 
 visualize_sequence:
 	@python scripts/visualize_dataset.py \
-		$(OUTPUT)/emil/training_sequence_single_scene_big/render_samples_seq \
-		$(OUTPUT)/emil/dataviz_sequence --spp 4
+		$(OUTPUT)/emil/training_sequence/render_samples_seq \
+		$(OUTPUT)/emil/dataviz_sequence --spp 4 --frames 10
 		# $(OUTPUT)/emil/validation_sequence/render_samples_seq \
 		# $(OUTPUT)/emil/dataviz_val_sequence --spp 4
 
 denoise_sequence_pretrained:
 	@python scripts/denoise.py \
-		--input $(OUTPUT)/emil/training_sequence_single_scene_big/render_samples_seq \
+		--input $(OUTPUT)/emil/training_sequence/render_samples_seq \
 		--output $(OUTPUT)/emil/dataviz_sequence/denoised/pretrained/ \
 		--spp 4 --sequence \
 		--checkpoint $(DATA)/pretrained_models/gharbi2019_sbmc \
-		--frames 12
+		--frames 10
 
 denoise_sequence_peters:
 	@python scripts/denoise.py \
-		--input $(OUTPUT)/emil/training_sequence_single_scene_big/render_samples_seq \
+		--input $(OUTPUT)/emil/training_sequence/render_samples_seq \
 		--output $(OUTPUT)/emil/dataviz_sequence/denoised/peters/ \
 		--spp 4 --sequence --temporal \
 		--checkpoint $(OUTPUT)/emil/trained_models/peters_all_loaded.pth \
-		--frames 12
+		--frames 10
 
 train_emil:
 	@python scripts/train.py \
@@ -259,8 +262,8 @@ compare_models:
 		--model1 $(OUTPUT)/emil/compare/model1/peters_all_loaded.pth \
 		--model2 $(OUTPUT)/emil/compare/model2/final_pretrained.pth \
 		--save_dir $(OUTPUT)/emil/compare/img \
-		--data $(OUTPUT)/emil/training_sequence/render_samples_seq \
-		--amount 5
+		--data $(OUTPUT)/emil/training_sequence_single_scene_big/render_samples_seq \
+		--amount 10
 
 demo/train:
 	@python scripts/train.py \

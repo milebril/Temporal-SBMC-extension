@@ -744,7 +744,7 @@ class OutdoorSceneGenerator(SceneGenerator):
         scn.shapes.append(obj)
         scn.materials.append(mat)
 
-        for _ in range(10):
+        for _ in range(0):
             # Fetch a random object from the library
             dst = os.path.join(dst_dir, f"geometry_scene#{idx}")
             mdl = np.random.choice(self._models)
