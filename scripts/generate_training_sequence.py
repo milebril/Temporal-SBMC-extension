@@ -168,7 +168,7 @@ def create_scene_file(q, render_queue):
             render_queue.put(render_data, block=False)
 
             # Move camera in scene
-            scn.translate_camera([0.02, 0, 0])
+            scn.translate_camera([0.00, 0, 0.02])
 
         q.task_done()
         continue

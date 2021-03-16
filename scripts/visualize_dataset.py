@@ -45,11 +45,14 @@ def main(args):
     LOG.info("Visualizing dataset with %d spp (gt_spp = %d)",
              data.spp, data.gt_sample_count)
     for idx, sample in enumerate(dataloader):
+        if idx >= args.frames: #
+            break
+
         LOG.info("Processing data sample %d", idx)
         ref = sample["target_image"]
         low_spp = sample["low_spp"]
         # LOG.info("  target radiance: %.2f -- %.2f", im.min().item(), im.max().item())
-        _save(args.output, "%04d_reference.png" % idx, ref)
+        # _save(args.output, "%04d_reference.png" % idx, ref)
         _save(args.output, "%04d_low_spp.png" % idx, low_spp)
 
         if not args.dump_features:
@@ -83,6 +86,7 @@ if __name__ == "__main__":
     parser.add_argument('--spp', type=int)
     parser.add_argument('--dump_features', dest="dump_features",
                         action="store_true", default=False)
+    parser.add_argument('--frames', type=int, default=500)                    
     args = parser.parse_args()
 
     ttools.set_logger()

@@ -228,16 +228,11 @@ class Multisteps(nn.Module):
             if limit_memory_usage:
                 if th.cuda.is_available():
                     th.cuda.empty_cache()
-        
-        # Normalize output with the running sum        
-        # Recast to CUDA
-        if (cast):
-            self.cuda()
 
         output = sum_r / (sum_w + self.eps)
 
-        if (cast):
-            output = output.to('cuda')
+        if not 'cuda' in str(radiance.device):
+            output = output.to('cpu')
 
         # Remove the invalid boundary data
         crop = (self.ksize - 1) // 2
@@ -454,15 +449,12 @@ class RecurrentMultisteps(nn.Module):
                 if th.cuda.is_available():
                     th.cuda.empty_cache()
         
-        # Normalize output with the running sum        
-        # Recast to CUDA
-        if (cast):
-            self.cuda()
+
 
         output = sum_r / (sum_w + self.eps)
 
-        if (cast):
-            output = output.to('cuda')
+        if not 'cuda' in str(radiance.device):
+            output = output.to('cpu')
 
         # Remove the invalid boundary data
         crop = (self.ksize - 1) // 2

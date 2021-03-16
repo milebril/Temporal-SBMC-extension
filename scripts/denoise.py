@@ -234,6 +234,11 @@ def denoise(args, input_root="", output_root=""):
                 mode = "peters"
             args.output = output_base + "-" + mode + "-" + scene_names[scene_id].split('/')[-1] + ".png"
 
+        out_radiance = th.clamp(out_radiance, 0)
+        out_radiance /= 1 + out_radiance
+        out_radiance = th.pow(out_radiance, 1.0/2.2)
+        out_radiance = th.clamp(out_radiance, 0, 1)
+
         out_radiance = out_radiance[0, ...].cpu().numpy().transpose([1, 2, 0])
 
         outdir = os.path.dirname(args.output)

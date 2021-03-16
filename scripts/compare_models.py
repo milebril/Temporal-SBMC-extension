@@ -43,6 +43,7 @@ def main(args):
     model_two.train(False)
 
     device = "cuda" if th.cuda.is_available() else "cpu"
+    device = "cpu"
     if (device == "cuda"):
         LOG.info("Using CUDA")
         model_one.cuda()
