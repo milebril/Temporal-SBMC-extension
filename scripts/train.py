@@ -102,6 +102,7 @@ def main(args):
 
     # Load the parameters from pretraind model
     model = load_sbmc(model)
+    model.train(True)
 
     # Try and load last completed training into the model
     # print(args.checkpoint_dir)
@@ -136,7 +137,7 @@ def main(args):
 
     # Launch the training
     LOG.info("Training started, 'Ctrl+C' to abort.")
-    trainer.train(dataloader, num_epochs=3000,
+    trainer.train(dataloader, num_epochs=1500,
                 val_dataloader=val_dataloader)
 
 """

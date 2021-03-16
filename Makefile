@@ -231,8 +231,8 @@ denoise_sequence_peters:
 
 train_emil:
 	@python scripts/train.py \
-		--checkpoint_dir $(OUTPUT)/emil/training_peters_all_loaded_single \
-		--data $(OUTPUT)/emil/training_sequence_single_scene/filelist.txt \
+		--checkpoint_dir $(OUTPUT)/emil/training_peters_cornell \
+		--data $(OUTPUT)/emil/training_sequence_cornell/filelist.txt \
 		--env sbmc_ours --port 2001 --bs 1 --constant_spp --emil_mode\
 		--spp 4
 		

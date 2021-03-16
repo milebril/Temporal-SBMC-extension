@@ -297,6 +297,7 @@ class RecurrentMultisteps(nn.Module):
                                           pad=False))
 
             # U-net implements the pixel spatial propagation step
+            
             # With recurrent connection in the first step
             # if step == self.nsteps-1:
             # if step == 0:
