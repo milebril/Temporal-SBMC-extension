@@ -119,9 +119,18 @@ def create_scene_file(q, render_queue):
         attempt = 0
         try:
             gen = np.random.choice(params.gen)
+
             # while not gen.sample_sequence(scn, dst_dir, idx=idx):
             # while not gen.sample_cornellbox_scene(scn, dst_dir, idx=idx):
-            while not gen.sample_wall_Scene(scn, dst_dir, idx=idx):
+            # while not gen.sample_wall_scene(scn, dst_dir, idx=idx):
+
+            if np.random.random() < 0.30:
+                scene_type = gen.sample_wall_scene
+            elif np.random.random() < 0.60:
+                scene_type = gen.sample_sequence
+            else:
+                scene_type = gen.sample_cornellbox_scene
+            while not scene_type(scn, dst_dir, idx=idx):
                 attempt += 1
                 LOG.warning("Sampling another Scene {}".format(gen))
                 if attempt == max_attempts:
@@ -139,6 +148,9 @@ def create_scene_file(q, render_queue):
             q.task_done()
             continue
         
+        # Random translation of the camera per scene generated.
+        camera_translation = np.multiply(np.random.uniform(0.01, 0.03, (3,)) ,np.random.randint(-1,2,3))
+
         # Render the frames
         for i in range(params.frames):
             dst_dir = os.path.abspath(os.path.join(params.output, "render_samples_seq" ,f"scene-{idx}_frame-{i}"))
@@ -168,7 +180,7 @@ def create_scene_file(q, render_queue):
             render_queue.put(render_data, block=False)
 
             # Move camera in scene
-            scn.translate_camera([0.00, 0, 0.02])
+            scn.translate_camera(camera_translation)
 
         q.task_done()
         continue

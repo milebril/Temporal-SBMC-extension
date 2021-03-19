@@ -6,6 +6,7 @@ import tempfile
 from torch.utils.data import DataLoader
 import os
 import pyexr
+import cv2
 import skimage.io as skio
 from ttools.modules.image_operators import crop_like
 
@@ -82,6 +83,43 @@ def main(args):
             LOG.info("Model 1 outperformed model 2")
 
         save_img(output1, output2, low_spp, tgt, args.save_dir, str(batch_idx))
+    #     save_compare_frame(output1, output2, tgt)
+    # make_compare_video(args.save_dir)
+
+frames = []
+def save_compare_frame(radiance1, radiance2, tgt):
+    # Difference between models and ground thruth
+    diff_model1 = (radiance1 - tgt).abs()
+    diff_model2 = (radiance2 - tgt).abs()
+
+    first_row = th.cat([radiance1,    diff_model1], -1)
+    second_row  = th.cat([radiance2,    diff_model2], -1)
+
+    data = th.cat([first_row, second_row], -2)
+
+    data = th.clamp(data, 0)
+    data /= 1 + data
+    data = th.pow(data, 1.0/2.2)
+    data = th.clamp(data, 0, 1)
+
+    data = data[0, ...].cpu().detach().numpy().transpose([1, 2, 0])
+
+    # Clip to 0-255 to remove HDR and pure radiance estimates + change to BGR color spectrum for opencv
+    frames.append(cv2.cvtColor((np.clip(data, 0, 1)*255).astype(np.uint8), cv2.COLOR_RGB2BGR))
+
+def make_compare_video(location):
+    height, width, layers = frames[0].shape
+
+    # Write to video
+    out = cv2.VideoWriter(f'{location}/compare_video.mp4', cv2.VideoWriter_fourcc(*'mp4v'), 5, (width, height))
+    
+    # Stitch 5 times to create loop
+    for _ in range(10):
+        for i in range(len(frames)):
+            out.write(frames[i])
+        frames.reverse()
+
+    out.release()
 
 def save_img(radiance1, radiance2, low_radiance, tgt, checkpoint_dir, name):
     tmp_empty = th.zeros_like(radiance1) # Empty filler tensor

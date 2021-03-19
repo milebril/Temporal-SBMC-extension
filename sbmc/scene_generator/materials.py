@@ -19,7 +19,7 @@
 """Material classes for the PBRT scene generator."""
 
 import ttools
-
+import uuid
 
 __all__ = ["MatteMaterial", "UberMaterial", "MirrorMaterial", "GlassMaterial",
            "MetalMaterial", "PlasticMaterial", "SubstrateMaterial"]
@@ -36,6 +36,8 @@ class Material():
         bump_texture(Texture or None): float texture to use as bump map.
     """
     def __init__(self, id=None, bump_texture=None):
+        if id is None:
+            id = str(uuid.uuid4())
         self.id = id
         self.textures = []
         self.bump_texture = bump_texture

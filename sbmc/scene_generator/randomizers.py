@@ -206,7 +206,7 @@ def random_material(id=None, textures_list=None):
     if id is None:
         id = str(uuid.uuid4())
 
-    if p_tex > 0.01:  # 15% chance uniform
+    if p_tex > 0.90:  # 15% chance uniform
         tex = None
     else:
         tex = textures_list

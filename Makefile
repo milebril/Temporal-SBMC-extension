@@ -137,61 +137,29 @@ generate_render_denoise:
 		--spp 4 \
 		--checkpoint $(DATA)/pretrained_models/bako2017_finetuned
 
-generate_render_denoise_quick:
-	@rm -rf $(OUTPUT)/emil/training_scenes
-	@python scripts/generate_training_data.py \
-		$(PBRT) \
-		$(OBJ2PBRT) \
-		$(DATA)/demo/scenegen_assets \
-		$(OUTPUT)/emil/training_scenes \
-		--count 1 --spp 128 --gt_spp 4 --height 256 --width 256 --verbose --no-clean
-	@cd $(OUTPUT)/emil/training_scenes && find . -name "*.bin" > filelist.txt
-	@python scripts/visualize_dataset.py \
-		$(OUTPUT)/emil/training_scenes \
-		$(OUTPUT)/emil/compare/ --spp 4
-	@python scripts/denoise.py \
-		--input $(OUTPUT)/emil/training_scenes \
-		--output $(OUTPUT)/emil/compare/ \
-		--spp 4 --sequence \
-		--checkpoint $(DATA)/pretrained_models/gharbi2019_sbmc
-
-generate_scenes_emil:
-	@rm -rf $(OUTPUT)/emil/training_scenes
-	@python scripts/generate_training_data.py \
-		$(PBRT) \
-		$(OBJ2PBRT) \
-		$(DATA)/demo/scenegen_assets \
-		$(OUTPUT)/emil/training_scenes \
-		--count 1 --spp 4 --gt_spp 4 --width 512 --height 512 --no-clean
-	@cd $(OUTPUT)/emil/training_scenes && find . -name "*.bin" > filelist.txt
-
-generate_sequence_and_denoise:
-	@rm -rf $(OUTPUT)/emil/training_sequence
-	@python scripts/generate_training_sequence.py \
-		$(PBRT) \
-		$(OBJ2PBRT) \
-		$(DATA)/demo/scenegen_assets \
-		$(OUTPUT)/emil/training_sequence \
-		--count 1 --frames 3 --spp 4 --gt_spp 4 --width 256 --height 256 --no-clean 
-	@cd $(OUTPUT)/emil/training_sequence && find . -name "*.bin" > filelist.txt
-	@python scripts/visualize_dataset.py \
-		$(OUTPUT)/emil/training_sequence/render_samples_seq \
-		$(OUTPUT)/emil/dataviz_sequence --spp 4
-	@python scripts/denoise.py \
-		--input $(OUTPUT)/emil/training_sequence/render_samples_seq \
-		--output $(OUTPUT)/emil/dataviz_sequence/denoised/ \
-		--spp 4 --sequence \
-		--checkpoint $(DATA)/pretrained_models/gharbi2019_sbmc
-
-generate_training_sequence:
-	@rm -rf $(OUTPUT)/emil/validation_sequence_tmp
+generate_render:
+	@rm -rf $(OUTPUT)/emil/training_sequence_tmp
 	@python scripts/generate_training_sequence.py \
 		$(PBRT) \
 		$(OBJ2PBRT) \
 		$(DATA)/demo/scenegen_assets \
 		$(OUTPUT)/emil/training_sequence_tmp \
-		--count 1 --frames 5 --spp 4 --gt_spp 512 --width 256 --height 256 --no-clean
+		--count 5 --frames 1 --spp 4 --gt_spp 4 --width 128 --height 128 --no-clean
 	@cd $(OUTPUT)/emil/training_sequence_tmp && find . -name "*.bin" | sort -V > filelist.txt
+	@python scripts/visualize_dataset.py \
+		$(OUTPUT)/emil/training_sequence_tmp/render_samples_seq \
+		$(OUTPUT)/emil/dataviz_sequence --spp 4 --frames 30
+
+
+generate_training_sequence:
+	@rm -rf $(OUTPUT)/emil/training_sequence_final
+	@python scripts/generate_training_sequence.py \
+		$(PBRT) \
+		$(OBJ2PBRT) \
+		$(DATA)/demo/scenegen_assets \
+		$(OUTPUT)/emil/training_sequence_final \
+		--count 100 --frames 5 --spp 4 --gt_spp 1024 --width 128 --height 128 --no-clean
+	@cd $(OUTPUT)/emil/training_sequence_final && find . -name "*.bin" | sort -V > filelist.txt
 
 generate_validation_sequence:
 	@rm -rf $(OUTPUT)/emil/validation_sequence_wall
@@ -200,77 +168,67 @@ generate_validation_sequence:
 		$(OBJ2PBRT) \
 		$(DATA)/demo/scenegen_assets \
 		$(OUTPUT)/emil/validation_sequence_wall \
-		--count 1 --frames 10 --spp 4 --gt_spp 1024 --width 256 --height 256 --no-clean
+		--count 1 --frames 10 --spp 4 --gt_spp 512 --width 256 --height 256 --no-clean
 	@cd $(OUTPUT)/emil/validation_sequence_wall && find . -name "*.bin" | sort -V > filelist.txt
 
 show_all: visualize_sequence denoise_sequence_pretrained denoise_sequence_peters 
 	@python scripts/make_compare_video.py 
 
+# Visualizes the given dataset specified at the location in the first argument
+# Ouputs the ground thruth render as well as the low spp render
 visualize_sequence:
 	@python scripts/visualize_dataset.py \
-		$(OUTPUT)/emil/training_sequence/render_samples_seq \
-		$(OUTPUT)/emil/dataviz_sequence --spp 4 --frames 10
+		$(OUTPUT)/emil/training_sequence_tmp/render_samples_seq \
+		$(OUTPUT)/emil/dataviz_sequence --spp 4 --frames 30
 		# $(OUTPUT)/emil/validation_sequence/render_samples_seq \
 		# $(OUTPUT)/emil/dataviz_val_sequence --spp 4
 
+# Denoises a given sequence using the pretrained model from Gharbi et al
 denoise_sequence_pretrained:
 	@python scripts/denoise.py \
-		--input $(OUTPUT)/emil/training_sequence/render_samples_seq \
+		--input $(OUTPUT)/emil/training_sequence_very_mat/render_samples_seq \
 		--output $(OUTPUT)/emil/dataviz_sequence/denoised/pretrained/ \
 		--spp 4 --sequence \
 		--checkpoint $(DATA)/pretrained_models/gharbi2019_sbmc \
 		--frames 10
 
+# Denoises the given sequence using the temporal extension to SBMC
 denoise_sequence_peters:
 	@python scripts/denoise.py \
-		--input $(OUTPUT)/emil/training_sequence/render_samples_seq \
+		--input $(OUTPUT)/emil/training_sequence_outdoor/render_samples_seq \
 		--output $(OUTPUT)/emil/dataviz_sequence/denoised/peters/ \
 		--spp 4 --sequence --temporal \
 		--checkpoint $(OUTPUT)/emil/trained_models/peters_all_loaded.pth \
-		--frames 10
+		--frames 5
 
+# Trains the recurrent SBMC model
 train_emil:
 	@python scripts/train.py \
 		--checkpoint_dir $(OUTPUT)/emil/training_peters_cornell \
 		--data $(OUTPUT)/emil/training_sequence_cornell/filelist.txt \
-		--env sbmc_ours --port 2001 --bs 1 --constant_spp --emil_mode\
+		--val_data $(OUTPUT)/emil/validation_sequence/filelist.txt \
+		--env sbmc_ours --port 2001 --bs 1 --constant_spp --emil_mode \
 		--spp 4
-		
+
+# Trains the SBMC model
 train_sbmc:
 	@python scripts/train.py \
 		--checkpoint_dir $(OUTPUT)/emil/training_sbmc_theirs \
-		--data $(OUTPUT)/emil/training_sequence/filelist.txt \
-		--env sbmc_ours --port 2001 --bs 1 --constant_spp\
-		--spp 4 --debug
+		--data $(OUTPUT)/emil/training_sequence_cornell/filelist.txt \
+		--val_data $(OUTPUT)/emil/validation_sequence/filelist.txt \
+		--env sbmc_ours --port 2001 --bs 1 --constant_spp \
+		--spp 4
 
-train_new_sbmc:
-	@python scripts/training_new.py \
-		--checkpoint_dir $(OUTPUT)/emil/training_sbmc_custom \
-		--data $(OUTPUT)/emil/training_sequence_single/filelist.txt \
-		--env sbmc_ours --port 2001 --bs 1 --constant_spp\
-		--spp 4 --debug
-
-train_new_peters:
-	@python scripts/training_new.py \
-		--checkpoint_dir $(OUTPUT)/emil/training_emil_custom \
-		--data $(OUTPUT)/emil/training_sequence/filelist.txt \
-		--env sbmc_ours --port 2001 --bs 1 --constant_spp --emil_mode \
-		--spp 4 --debug
-
+# Compares the two given models on a specified testset
+# Outputs RMSE comparisons and visual comparisons
 compare_models:
 	@python scripts/compare_models.py \
-		--model1 $(OUTPUT)/emil/compare/model1/peters_all_loaded.pth \
-		--model2 $(OUTPUT)/emil/compare/model2/final_pretrained.pth \
+		--model1 $(OUTPUT)/emil/trained_models/peters_all_cornell.pth \
+		--model2 $(OUTPUT)/emil/trained_models/final_pretrained.pth \
 		--save_dir $(OUTPUT)/emil/compare/img \
-		--data $(OUTPUT)/emil/training_sequence_single_scene_big/render_samples_seq \
-		--amount 10
+		--data $(OUTPUT)/emil/training_sequence/render_samples_seq \
+		--amount 1
 
-demo/train:
-	@python scripts/train.py \
-		--checkpoint_dir $(OUTPUT)/demo/training \
-		--data $(OUTPUT)/emil/training_sequence/filelist.txt \
-		--env sbmc_ours --port 2001 --bs 1 \
-		--spp 4
 # -----------------------------------------------------------------------------
 
 # The rest of this Makefiles demonstrates how to use the SBMC API and entry

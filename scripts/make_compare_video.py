@@ -33,8 +33,10 @@ for i in range(len(noisy)):
     final.append(np.concatenate((noisy[i], gharbi[i], peters[i]), axis=0))
 
 height, width, layers = final[0].shape
+# height, width, layers = gharbi[0].shape
+
 # Write to video
-out = cv2.VideoWriter('/home/emil/Documents/Temporal-SBMC-extension/output/emil/dataviz_sequence/video.avi', cv2.VideoWriter_fourcc(*'DIVX'), 5, (width, height))
+out = cv2.VideoWriter('/home/emil/Documents/Temporal-SBMC-extension/output/emil/dataviz_sequence/gharbi.avi', cv2.VideoWriter_fourcc(*'DIVX'), 5, (width, height))
  
 # Stitch 5 times to create loop
 for _ in range(5):

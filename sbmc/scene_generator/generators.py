@@ -21,6 +21,7 @@ import os
 
 from bridson import poisson_disc_samples as pdisc
 import numpy as np
+from numpy import random
 
 import ttools
 
@@ -435,6 +436,9 @@ class OutdoorSceneGenerator(SceneGenerator):
 
         return True
 
+    """
+        Sample an outdoor scene illuminated by an envmap
+    """
     def sample_sequence(self, scn, dst_dir, params=None, idx=0):
         self._log.debug("Sampling new outdoor scene")
         self._randomize_textures()
@@ -485,9 +489,7 @@ class OutdoorSceneGenerator(SceneGenerator):
             pbrt_objects = self._converter(mdl, dst)
 
             # Randomize the scale and position
-            # scl = radius*np.random.exponential(0.5)*np.ones((3,))
-            scl = np.random.exponential(0.5)*np.ones((3,))
-            # scl = [0.2, 0.2, 0.5]
+            scl = np.random.exponential(0.4, (3, ))*np.ones((3,))
             z_idx = np.random.randint(0, z_layers)
             altitude = np.random.normal(0.1, 0.2)
             position = [coords[0, o_idx], coords[1, o_idx], altitude]
@@ -553,6 +555,11 @@ class OutdoorSceneGenerator(SceneGenerator):
 
         return True
 
+    """
+        Samples a cornell box like scene
+        To represent indoor scenes
+        With a lot of indirect lighting
+    """
     def sample_cornellbox_scene(self, scn, dst_dir, params=None, idx=0):
         self._log.debug("Sampling Custom Cornellbox")
         self._randomize_textures()
@@ -583,58 +590,61 @@ class OutdoorSceneGenerator(SceneGenerator):
         else:
             aperture = 0.0
 
-        box = True
-        if box:
-            # Ground Plane
-            obj = geometry.GoodPlane(scale=10)
-            xforms.translate(obj, [0, -3, -5])
-            mat = materials.MatteMaterial(id="white-floor", diffuse=[1,1,1])
-            obj.assign_material(mat)    
+        # Ground Plane
+        obj = geometry.GoodPlane(scale=10)
+        xforms.translate(obj, [0, -3, -5])
+        # mat = materials.MatteMaterial(id="white-floor", diffuse=[1,1,1])
+        mat = materials.MatteMaterial(diffuse=np.random.rand(3,))
+        obj.assign_material(mat)    
 
-            scn.shapes.append(obj)
-            scn.materials.append(mat)
+        scn.shapes.append(obj)
+        scn.materials.append(mat)
 
-            # Ground Plane
-            obj = geometry.GoodPlane(scale=10)
-            xforms.rotate(obj, [0, 1, 0], 180)
-            xforms.translate(obj, [0, 3, -5])
-            mat = materials.MatteMaterial(id="white-ceiling", diffuse=[1,1,1])
-            obj.assign_material(mat)    
+        # Ground Plane
+        obj = geometry.GoodPlane(scale=10)
+        xforms.rotate(obj, [0, 1, 0], 180)
+        xforms.translate(obj, [0, 3, -5])
+        # mat = materials.MatteMaterial(id="white-ceiling", diffuse=[1,1,1])
+        mat = materials.MatteMaterial(diffuse=np.random.rand(3,))
+        obj.assign_material(mat)    
 
-            scn.shapes.append(obj)
-            scn.materials.append(mat)
+        scn.shapes.append(obj)
+        scn.materials.append(mat)
 
-            # Back Plane White
-            obj = geometry.GoodPlane(scale=10)
-            xforms.rotate(obj, [1, 0, 0], 90)
-            xforms.translate(obj, [0, 0, -10])
-            mat = materials.MatteMaterial(id="white-back", diffuse=[1,1,1])
-            obj.assign_material(mat)    
+        # Back Plane White
+        obj = geometry.GoodPlane(scale=10)
+        xforms.rotate(obj, [1, 0, 0], 90)
+        xforms.translate(obj, [0, 0, -10])
+        # mat = materials.MatteMaterial(id="white-back", diffuse=[1,1,1])
+        mat = materials.MatteMaterial(diffuse=np.random.rand(3,))
+        obj.assign_material(mat)    
 
-            scn.shapes.append(obj)
-            scn.materials.append(mat)
+        scn.shapes.append(obj)
+        scn.materials.append(mat)
 
-            # Right Plane Green
-            obj = geometry.GoodPlane(scale=10)
-            xforms.rotate(obj, [1, 0, 0], 90)
-            xforms.rotate(obj, [0, 1, 0], 90)
-            xforms.translate(obj, [3, 0, -5])
-            mat = materials.MatteMaterial(id="green-right", diffuse=[0,1,0])
-            obj.assign_material(mat)    
+        # Right Plane Green
+        obj = geometry.GoodPlane(scale=10)
+        xforms.rotate(obj, [1, 0, 0], 90)
+        xforms.rotate(obj, [0, 1, 0], 90)
+        xforms.translate(obj, [3, 0, -5])
+        # mat = materials.MatteMaterial(id="green-right", diffuse=[0,1,0])
+        mat = materials.MatteMaterial(diffuse=np.random.rand(3,))
+        obj.assign_material(mat)    
 
-            scn.shapes.append(obj)
-            scn.materials.append(mat)
+        scn.shapes.append(obj)
+        scn.materials.append(mat)
 
-            # Left Plane Red
-            obj = geometry.GoodPlane(scale=10)
-            xforms.rotate(obj, [1, 0, 0], 90)
-            xforms.rotate(obj, [0, 1, 0], 90)
-            xforms.translate(obj, [-3, 0, -5])
-            mat = materials.MatteMaterial(id="red-left", diffuse=[1,0,0])
-            obj.assign_material(mat)    
+        # Left Plane Red
+        obj = geometry.GoodPlane(scale=10)
+        xforms.rotate(obj, [1, 0, 0], 90)
+        xforms.rotate(obj, [0, 1, 0], 90)
+        xforms.translate(obj, [-3, 0, -5])
+        # mat = materials.MatteMaterial(id="red-left", diffuse=[1,0,0])
+        mat = materials.MatteMaterial(diffuse=np.random.rand(3,))
+        obj.assign_material(mat)    
 
-            scn.shapes.append(obj)
-            scn.materials.append(mat)
+        scn.shapes.append(obj)
+        scn.materials.append(mat)
         
         nb_objects = 20
         focus_at = np.random.randint(0, nb_objects)
@@ -657,7 +667,7 @@ class OutdoorSceneGenerator(SceneGenerator):
             pbrt_objects = self._converter(mdl, dst)
 
             # Randomize the scale and position
-            scl = np.random.exponential(0.4)*np.ones((3,))
+            scl = np.random.exponential(0.4, (3,))
             z_idx = np.random.randint(0, 2)
             altitude = np.random.normal(0.1, 0.2)
             position = [np.random.uniform(0, 5) - 2.5, np.random.uniform(0, 5) - 2.5, altitude]
@@ -694,8 +704,10 @@ class OutdoorSceneGenerator(SceneGenerator):
         # Light Source on ceiling
         light_geom = geometry.GoodPlane(scale=1)
         xforms.rotate(light_geom, [1, 0, 0], 180)
-        xforms.translate(light_geom, [0, 2.99, -5])
-        light = lights.AreaLight(light_geom, spectrum=[25, 25, 25])
+        xforms.translate(light_geom, [np.random.uniform(0, 2) - 1, 2.99, -np.random.uniform(5, 6)])
+        # xforms.translate(light_geom, [0, np.random.uniform(2, 4), -5])
+        random_luminosity = np.random.randint(50,150, size=(3,))
+        light = lights.AreaLight(light_geom, spectrum=random_luminosity)
         scn.lights.append(light)
 
         # Attach the camera to the scene
@@ -716,7 +728,10 @@ class OutdoorSceneGenerator(SceneGenerator):
 
         return True
 
-    def sample_wall_Scene(self, scn, dst_dir, params=None, idx=0):
+    """
+        Sample a wall scene with a diffuse background and multiple objects in the cameras frustum
+    """
+    def sample_wall_scene(self, scn, dst_dir, params=None, idx=0):
         self._log.debug("Sampling Custom Plane Scene")
         self._randomize_textures()
 
@@ -733,25 +748,24 @@ class OutdoorSceneGenerator(SceneGenerator):
             "fov": cam_fov
         }
 
-
         # Simple plane
         obj = geometry.GoodPlane(scale=40)
         xforms.rotate(obj, [1, 0, 0], 90)
         xforms.translate(obj, [0, 0, -15])
-        mat = randomizers.random_material(id="random", textures_list=self._textures)
+        mat = randomizers.random_diffuse_material(id="random")
         obj.assign_material(mat)    
 
         scn.shapes.append(obj)
         scn.materials.append(mat)
 
-        for _ in range(0):
+        for _ in range(20):
             # Fetch a random object from the library
             dst = os.path.join(dst_dir, f"geometry_scene#{idx}")
             mdl = np.random.choice(self._models)
             pbrt_objects = self._converter(mdl, dst)
 
             # Randomize the scale and position
-            scl = np.random.exponential(0.4)*np.ones((3,))
+            scl = np.random.exponential(0.4, (3, ))
             z_idx = np.random.randint(0, 2)
             altitude = np.random.normal(0.1, 0.2)
             position = [np.random.uniform(0, 5) - 2.5, np.random.uniform(0, 5) - 2.5, altitude]
@@ -776,13 +790,9 @@ class OutdoorSceneGenerator(SceneGenerator):
 
         light_geom = geometry.GoodPlane(scale=2)
         xforms.rotate(light_geom, [1, 0, 0], -90)
-        xforms.translate(light_geom, [0, 0, 1])
+        xforms.translate(light_geom, [np.random.uniform(0,4) - 2, 0, np.random.uniform(0,4) - 2])
         light = lights.AreaLight(light_geom, spectrum=[100, 100, 100])
         scn.lights.append(light)
-
-        # env = randomizers.random_envmap(self._envmaps, nsamples=8)
-        # xforms.rotate(env, [0, 0, 1], np.random.uniform(0, 360))
-        # scn.lights.append(env)
 
         # Attach the camera to the scene
         scn.camera = Camera(**cam_params)

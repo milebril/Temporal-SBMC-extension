@@ -1,1 +1,4 @@
 ./envmaps/0055bc0477ef97c271152081bae11a310ad74313.pfm
+./envmaps/kloppenheim_02_2k.pfm
+./envmaps/oberer_kuhberg_2k.pfm
+./envmaps/cannon_2k.pfm

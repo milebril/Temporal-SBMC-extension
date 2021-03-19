@@ -31,19 +31,7 @@ from ttools.modules.image_operators import crop_like
 from ttools.callbacks import KeyedCallback
 
 
-__all__ = ["DenoisingDisplayCallback", "SchedulerCallback", "TensorboardCallback", "SaveImageCallback"]
-
-class SchedulerCallback(ttools.Callback):
-    def __init__(self, scheduler):
-        super(SchedulerCallback, self).__init__()
-        self.scheduler = scheduler
-        self.epoch = 0
-    
-    def epoch_start(self, epoch_idx):
-        self.epoch = epoch_idx  
-
-    def epoch_end(self):
-        self.scheduler.step()
+__all__ = ["DenoisingDisplayCallback", "TensorboardCallback", "SaveImageCallback"]
 
 class TensorboardCallback(KeyedCallback):
     def __init__(self, log_keys, writer):
@@ -58,6 +46,9 @@ class TensorboardCallback(KeyedCallback):
     def epoch_end(self):
         self.writer.add_scalar('Loss/train', self.ema["loss"], self.epoch)
         self.writer.add_scalar('RMSE/train', self.ema["rmse"], self.epoch)
+    
+    def validation_end(self, val_data):
+        print(val_data)
 
 class SaveImageCallback(ttools.Callback):
     def __init__(self, freq=50, checkpoint_dir=""):

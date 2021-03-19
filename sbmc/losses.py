@@ -69,7 +69,6 @@ class SMAPE(th.nn.Module):
 
         return loss
 
-
 class TonemappedMSE(th.nn.Module):
     """Mean-squared error on tonemaped images.
 
@@ -87,7 +86,6 @@ class TonemappedMSE(th.nn.Module):
         loss = th.pow(im-ref, 2)
         loss = 0.5*th.mean(loss)
         return loss
-
 
 class TonemappedRelativeMSE(th.nn.Module):
     """Relative mean-squared error on tonemaped images.

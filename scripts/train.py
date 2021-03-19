@@ -104,12 +104,6 @@ def main(args):
     model = load_sbmc(model)
     model.train(True)
 
-    # Try and load last completed training into the model
-    # print(args.checkpoint_dir)
-    # model_location =  os.path.join(args.checkpoint_dir, "training_end.pth")
-    # if os.path.isfile(model_location):
-    #     model.load_state_dict(th.load(model_location, map_location=th.device('cpu'))['model'])
-
     interface = sbmc.SampleBasedDenoiserInterface(
         model, lr=args.lr, cuda=True)
 
@@ -131,7 +125,6 @@ def main(args):
     #                                                    port=args.port,
     #                                                    win="images",
     #                                                    checkpoint_dir=args.checkpoint_dir))
-    # trainer.add_callback(sbmc.SchedulerCallback(interface.scheduler))
     trainer.add_callback(sbmc.TensorboardCallback(log_keys, interface.writer))
     trainer.add_callback(sbmc.SaveImageCallback(freq=freq, checkpoint_dir=args.checkpoint_dir))
 

@@ -273,6 +273,7 @@ def render(render_queue):
             LOG.debug("Renderer output %s", ret)
         except Exception as e:
             LOG.warning("Rendering failed for scene %s: %s" % (dst_dir, e))
+            shutil.rmtree(dst_dir)
             render_queue.task_done()
             continue
         os.chdir(params.working_dir)
