@@ -22,6 +22,8 @@ import torch as th
 import time
 import ttools
 import os
+
+from ttools.training import Trainer
 import pyexr
 import numpy as np
 import skimage.io as skio
@@ -30,15 +32,19 @@ from ttools.utils import ExponentialMovingAverage
 from ttools.modules.image_operators import crop_like
 from ttools.callbacks import KeyedCallback
 
+import sbmc.early_stopping as early_stopping
 
 __all__ = ["DenoisingDisplayCallback", "TensorboardCallback", "SaveImageCallback"]
 
 class TensorboardCallback(KeyedCallback):
-    def __init__(self, log_keys, writer):
+    def __init__(self, log_keys, writer, trainer : Trainer):
         super(TensorboardCallback, self).__init__(keys=log_keys)
         self.log_keys = log_keys
         self.writer = writer
+        self.trainer = trainer
         self.epoch = 0
+
+        self.early_stopping = early_stopping.EarlyStopping(patience=30)
 
     def epoch_start(self ,epoch_idx):
         self.epoch = epoch_idx  
@@ -48,7 +54,12 @@ class TensorboardCallback(KeyedCallback):
         self.writer.add_scalar('RMSE/train', self.ema["rmse"], self.epoch)
     
     def validation_end(self, val_data):
-        print(val_data)
+        self.writer.add_scalar('Loss/validation', val_data['loss'], self.epoch)
+        self.writer.add_scalar('RMSE/validation', val_data['rmse'], self.epoch)
+
+        if self.early_stopping.step(val_data['loss']):
+            print(f"Validation loss converged at epoch {self.epoch} with loss {val_data['loss']}")
+            self.trainer._stop()
 
 class SaveImageCallback(ttools.Callback):
     def __init__(self, freq=50, checkpoint_dir=""):
