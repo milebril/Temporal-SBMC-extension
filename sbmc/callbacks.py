@@ -57,7 +57,9 @@ class TensorboardCallback(KeyedCallback):
         self.writer.add_scalar('Loss/validation', val_data['loss'], self.epoch)
         self.writer.add_scalar('RMSE/validation', val_data['rmse'], self.epoch)
 
-        if self.early_stopping.step(val_data['loss']):
+        print(f"Validation loss: {val_data['loss']} rmse: {val_data['rmse']}")
+
+        if self.early_stopping.step(th.tensor(val_data['loss'])):
             print(f"Validation loss converged at epoch {self.epoch} with loss {val_data['loss']}")
             self.trainer._stop()
 

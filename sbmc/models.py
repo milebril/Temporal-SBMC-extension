@@ -291,10 +291,14 @@ class RecurrentMultisteps(nn.Module):
 
             # 1x1 convolutions implement the per-sample transformation
             # 128 x 1 sample embedding berekenen
+            # self.add_module("embedding_{:02d}".format(step),
+            #                 ops.ConvChain(n_in, self.embedding_width,
+            #                               width=width, depth=3, ksize=1,
+            #                               pad=False))
             self.add_module("embedding_{:02d}".format(step),
-                            ops.ConvChain(n_in, self.embedding_width,
-                                          width=width, depth=3, ksize=1,
-                                          pad=False))
+                            ops.RecurrentConvChain(n_in, n_in, self.embedding_width,
+                                            width=width, depth=3, ksize=1,
+                                            pad=False))
 
             # U-net implements the pixel spatial propagation step
             

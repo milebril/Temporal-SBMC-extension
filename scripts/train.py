@@ -158,7 +158,7 @@ def load_sbmc(model):
 
         # Skip the modules with recurrent connections   
         # if 'propagation_02' in layer_name and 'left' in layer_name:
-        if 'propagation' in layer_name:
+        if 'propagation' in layer_name or 'embedding' in layer_name:
             count+=1
             continue
         # print(f"Layer: {layer_name}")
