@@ -291,30 +291,12 @@ class RecurrentMultisteps(nn.Module):
 
             # 1x1 convolutions implement the per-sample transformation
             # 128 x 1 sample embedding berekenen
-            # self.add_module("embedding_{:02d}".format(step),
-            #                 ops.ConvChain(n_in, self.embedding_width,
-            #                               width=width, depth=3, ksize=1,
-            #                               pad=False))
             self.add_module("embedding_{:02d}".format(step),
-                            ops.RecurrentConvChain(n_in, n_in, self.embedding_width,
-                                            width=width, depth=3, ksize=1,
-                                            pad=False))
+                            ops.ConvChain(n_in, self.embedding_width,
+                                          width=width, depth=3, ksize=1,
+                                          pad=False))
 
             # U-net implements the pixel spatial propagation step
-            
-            # With recurrent connection in the first step
-            # if step == self.nsteps-1:
-            # if step == 0:
-            #     self.add_module("propagation_{:02d}".format(step), ops.RecurrentAutoencoder(
-            #         self.embedding_width, width, num_levels=3, increase_factor=2.0,
-            #         num_convs=3, width=width, ksize=3, output_type="leaky_relu",
-            #         pooling="max"))
-            # else:
-            #     self.add_module("propagation_{:02d}".format(step), ops.Autoencoder(
-            #         self.embedding_width, width, num_levels=3, increase_factor=2.0,
-            #         num_convs=3, width=width, ksize=3, output_type="leaky_relu",
-            #         pooling="max"))
-
             # Adding recurrent connections to every step
             self.add_module("propagation_{:02d}".format(step), ops.RecurrentAutoencoder(
                 self.embedding_width, width, num_levels=3, increase_factor=2.0,
