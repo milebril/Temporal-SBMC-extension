@@ -44,7 +44,7 @@ class TensorboardCallback(KeyedCallback):
         self.trainer = trainer
         self.epoch = 0
 
-        self.early_stopping = early_stopping.EarlyStopping(patience=30)
+        self.early_stopping = early_stopping.EarlyStopping(min_delta=1e-3, patience=20)
 
     def epoch_start(self ,epoch_idx):
         self.epoch = epoch_idx  
