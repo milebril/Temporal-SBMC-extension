@@ -152,8 +152,9 @@ def create_scene_file(q, render_queue):
         camera_translation = np.multiply(np.random.uniform(0.01, 0.03, (3,)) ,np.random.randint(-1,2,3))
 
         # Render the frames
+        start = 100
         for i in range(params.frames):
-            dst_dir = os.path.abspath(os.path.join(params.output, "render_samples_seq" ,f"scene-{idx}_frame-{i}"))
+            dst_dir = os.path.abspath(os.path.join(params.output, "render_samples_seq" ,f"scene-{idx + start}_frame-{i}"))
             try:
                 os.makedirs(dst_dir, exist_ok=True)
             except Exception as e:

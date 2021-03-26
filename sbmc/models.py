@@ -407,22 +407,11 @@ class RecurrentMultisteps(nn.Module):
         # Cast data to CPU for Halide
         # tensor.cuda() is used to move a tensor to GPU memory.
         # tensor.cpu() moves it back to memory accessible to the CPU.
-        cast = 'cuda' in str(radiance.device)
-        cast = False
-        if (cast):
-            radiance_clone = radiance.to('cpu')
-            propagated_clone = propagated.to('cpu')
-            self.cpu()
 
         for sp in range(spp):
-            if cast:
-                f = features[:, sp].to(radiance_clone.device)
-                f = th.cat([f, propagated_clone], 1)
-                r = radiance_clone[:, sp].to(radiance_clone.device)
-            else:
-                f = features[:, sp].to(radiance.device)
-                f = th.cat([f, propagated], 1)
-                r = radiance[:, sp].to(radiance.device)
+            f = features[:, sp].to(radiance.device)
+            f = th.cat([f, propagated], 1)
+            r = radiance[:, sp].to(radiance.device)
 
             kernels = self.kernel_regressor(f)
             if limit_memory_usage:
@@ -435,13 +424,8 @@ class RecurrentMultisteps(nn.Module):
             if limit_memory_usage:
                 if th.cuda.is_available():
                     th.cuda.empty_cache()
-        
-
-
+                    
         output = sum_r / (sum_w + self.eps)
-
-        if not 'cuda' in str(radiance.device):
-            output = output.to('cpu')
 
         # Remove the invalid boundary data
         crop = (self.ksize - 1) // 2

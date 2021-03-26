@@ -101,7 +101,7 @@ def main(args):
     extras, meta = checkpointer.load_latest()
 
     # Load the parameters from pretraind model
-    model = load_sbmc(model)
+    # model = load_sbmc(model)
     model.train(True)
 
     interface = sbmc.SampleBasedDenoiserInterface(
@@ -125,7 +125,7 @@ def main(args):
     #                                                    port=args.port,
     #                                                    win="images",
     #                                                    checkpoint_dir=args.checkpoint_dir))
-    trainer.add_callback(sbmc.TensorboardCallback(log_keys, interface.writer, trainer))
+    trainer.add_callback(sbmc.TensorboardCallback(log_keys, interface, trainer, checkpoint_dir=args.checkpoint_dir))
     trainer.add_callback(sbmc.SaveImageCallback(freq=freq, checkpoint_dir=args.checkpoint_dir))
 
     # Launch the training

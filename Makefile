@@ -74,14 +74,18 @@ test:
 
 render_png:
 	@python scripts/render_samples.py $(PBRT) \
-		$(DATA)/demo/scenes/mblur.pbrt \
-		$(OUTPUT)/emil/samples/render \
-		--tmp_dir $(OUTPUT)/tmp --height 512 --width 512 --spp 8 \
-		--gt_spp 1 --verbose
+		$(OUTPUT)/emil/test_set/room-mlt.pbrt \
+		$(OUTPUT)/emil/samples/render/scene-0_frame-1 \
+		--tmp_dir $(OUTPUT)/tmp --spp 8 --gt_spp 1 --verbose
 	@cd $(OUTPUT)/emil/samples && find . -name "*.bin" > filelist.txt
 	@python scripts/visualize_dataset.py \
-		${OUTPUT}/emil/samples/ \
-		${OUTPUT}/emil/renders --spp 512
+		${OUTPUT}/emil/samples/render \
+		${OUTPUT}/emil/test_set --spp 4
+
+tmp: 
+	@python scripts/visualize_dataset.py \
+		${OUTPUT}/emil/samples/render \
+		${OUTPUT}/emil/test_set --spp 8
 
 generate_render:
 	@rm -rf $(OUTPUT)/emil/training_sequence_tmp
@@ -98,13 +102,13 @@ generate_render:
 
 
 generate_training_sequence:
-	@rm -rf $(OUTPUT)/emil/training_sequence_final
+	# @rm -rf $(OUTPUT)/emil/training_sequence_final
 	@python scripts/generate_training_sequence.py \
 		$(PBRT) \
 		$(OBJ2PBRT) \
 		$(DATA)/demo/scenegen_assets \
 		$(OUTPUT)/emil/training_sequence_final \
-		--count 100 --frames 5 --spp 4 --gt_spp 1024 --width 128 --height 128 --no-clean
+		--count 1 --frames 1 --spp 4 --gt_spp 1024 --width 128 --height 128 --no-clean
 	@cd $(OUTPUT)/emil/training_sequence_final && find . -name "*.bin" | sort -V > filelist.txt
 
 generate_validation_sequence:
@@ -167,11 +171,11 @@ train_sbmc:
 # Outputs RMSE comparisons and visual comparisons
 compare_models:
 	@python scripts/compare_models.py \
-		--model1 $(OUTPUT)/emil/trained_models/peters_all_cornell.pth \
+		--model1 $(OUTPUT)/emil/trained_models/final/epoch_1585.pth \
 		--model2 $(OUTPUT)/emil/trained_models/final_pretrained.pth \
 		--save_dir $(OUTPUT)/emil/compare/img \
-		--data $(OUTPUT)/emil/training_sequence/render_samples_seq \
-		--amount 1
+		--data $(OUTPUT)/emil/validation_sequence_final/render_samples_seq \
+		--amount 20
 
 # -----------------------------------------------------------------------------
 

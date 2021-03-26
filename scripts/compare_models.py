@@ -44,7 +44,6 @@ def main(args):
     model_two.train(False)
 
     device = "cuda" if th.cuda.is_available() else "cpu"
-    device = "cpu"
     if (device == "cuda"):
         LOG.info("Using CUDA")
         model_one.cuda()
@@ -53,14 +52,20 @@ def main(args):
     rmse_checker = losses.RelativeMSE()
     rmse_checker.to(device)
 
+    # start = np.random.randint(0, 80) * 5
+    start = 0
+
     for batch_idx, batch in enumerate(dataloader):
-        if batch_idx >= args.amount:
+        if batch_idx < start:
+            continue
+
+        if batch_idx >= start + args.amount:
             break
 
         for k in batch.keys():
             if not batch[k].__class__ == th.Tensor:
                 continue
-            batch[k] = batch[k].to(device) #Sets the tensors to the correct device type
+            batch[k] = batch[k].to(device) # Sets the tensors to the correct device type
 
         # Compute the radiances using the two models
         with th.no_grad():

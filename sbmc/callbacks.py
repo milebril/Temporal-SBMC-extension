@@ -17,6 +17,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Callbacks used a train time."""
+from numpy.core.numeric import Infinity
 import torch as th
 
 import time
@@ -32,19 +33,23 @@ from ttools.utils import ExponentialMovingAverage
 from ttools.modules.image_operators import crop_like
 from ttools.callbacks import KeyedCallback
 
+from sbmc.interfaces import SampleBasedDenoiserInterface
 import sbmc.early_stopping as early_stopping
 
 __all__ = ["DenoisingDisplayCallback", "TensorboardCallback", "SaveImageCallback"]
 
 class TensorboardCallback(KeyedCallback):
-    def __init__(self, log_keys, writer, trainer : Trainer):
+    def __init__(self, log_keys, interface : SampleBasedDenoiserInterface, trainer : Trainer, checkpoint_dir=""):
         super(TensorboardCallback, self).__init__(keys=log_keys)
         self.log_keys = log_keys
-        self.writer = writer
+        self.interface = interface
+        self.writer = interface.writer
         self.trainer = trainer
         self.epoch = 0
 
         self.early_stopping = early_stopping.EarlyStopping(min_delta=1e-3, patience=20)
+        self.lowest_val_loss = Infinity
+        self.checkpoint_dir = checkpoint_dir
 
     def epoch_start(self ,epoch_idx):
         self.epoch = epoch_idx  
@@ -62,6 +67,14 @@ class TensorboardCallback(KeyedCallback):
         if self.early_stopping.step(th.tensor(val_data['loss'])):
             print(f"Validation loss converged at epoch {self.epoch} with loss {val_data['loss']}")
             self.trainer._stop()
+
+        if (val_data['loss'] < self.lowest_val_loss):
+            # Save a copy of the model when the validation loss is at the lowest
+            th.save({
+                'model_state_dict': self.interface.model.state_dict(),
+                'optimizer_state_dict': self.interface.optimizer.state_dict(),
+                'epoch': self.epoch
+            }, os.path.join(self.checkpoint_dir, "best/best.pth"))
 
 class SaveImageCallback(ttools.Callback):
     def __init__(self, freq=50, checkpoint_dir=""):
