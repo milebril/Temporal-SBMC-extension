@@ -177,6 +177,16 @@ compare_models:
 		--data $(OUTPUT)/emil/validation_sequence_final/render_samples_seq \
 		--amount 20
 
+render_sample:
+	@python scripts/render_samples.py $(PBRT) \
+		$(OUTPUT)/emil/test_set/pbrt/sanmiguel_cam3.pbrt \
+		$(OUTPUT)/emil/test_set/samples/ \
+		--tmp_dir $(OUTPUT)/tmp --height 128 --width 128 --spp 4 \
+		--gt_spp 1
+	@python scripts/visualize_dataset.py \
+		$(OUTPUT)/emil/test_set/samples/ \
+		$(OUTPUT)/emil/test_set --spp 4 --frames 500
+
 # -----------------------------------------------------------------------------
 
 # The rest of this Makefiles demonstrates how to use the SBMC API and entry

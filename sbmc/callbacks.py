@@ -68,6 +68,9 @@ class TensorboardCallback(KeyedCallback):
             print(f"Validation loss converged at epoch {self.epoch} with loss {val_data['loss']}")
             self.trainer._stop()
 
+        location = os.path.join(self.checkpoint_dir, "best/best.pth")
+        os.makedirs(location)
+
         if (val_data['loss'] < self.lowest_val_loss):
             # Save a copy of the model when the validation loss is at the lowest
             th.save({
