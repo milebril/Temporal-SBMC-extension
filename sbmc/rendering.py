@@ -201,7 +201,6 @@ class PBRTRenderer(object):
         LOG.debug("Moving %s to %s", src, dst)
         shutil.move(src, dst)
 
-
 class PBRTSamplesRenderer(PBRTRenderer):
     def _setup(self):
         super(PBRTSamplesRenderer, self)._setup()

@@ -223,6 +223,7 @@ def main(args):
                 "clean": args.clean,
                 "random": np.random.randint(0, 2147000000)
             }
+            print(data)
             if args.count > 0 and count == args.count:
                 break
             scene_queue.put(data, block=False)

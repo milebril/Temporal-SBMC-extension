@@ -229,6 +229,7 @@ class Camera():
                 *(self.position + self.target + self.up))
         else:
             s = self.xform.pbrt()
+            
         s += ('Camera "{}" "float fov" [{}] "float shutteropen" [{}] '
               '"float shutterclose" [{}] "float lensradius" [{}]'
               ' "float focaldistance" [{}]\n').format(self.type, self.fov,

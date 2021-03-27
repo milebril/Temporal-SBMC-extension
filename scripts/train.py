@@ -101,7 +101,7 @@ def main(args):
     extras, meta = checkpointer.load_latest()
 
     # Load the parameters from pretraind model
-    # model = load_sbmc(model)
+    model = load_sbmc(model)
     model.train(True)
 
     interface = sbmc.SampleBasedDenoiserInterface(

@@ -112,14 +112,14 @@ generate_training_sequence:
 	@cd $(OUTPUT)/emil/training_sequence_final && find . -name "*.bin" | sort -V > filelist.txt
 
 generate_validation_sequence:
-	@rm -rf $(OUTPUT)/emil/validation_sequence_final
+	# @rm -rf $(OUTPUT)/emil/validation_sequence_final
 	@python scripts/generate_training_sequence.py \
 		$(PBRT) \
 		$(OBJ2PBRT) \
 		$(DATA)/demo/scenegen_assets \
-		$(OUTPUT)/emil/validation_sequence_final \
-		--count 10 --frames 5 --spp 4 --gt_spp 1024 --width 128 --height 128 --no-clean
-	@cd $(OUTPUT)/emil/validation_sequence_final && find . -name "*.bin" | sort -V > filelist.txt
+		$(OUTPUT)/emil/validation_sequence_tmp \
+		--count 1 --frames 1 --spp 4 --gt_spp 4 --width 128 --height 128 --no-clean
+	# @cd $(OUTPUT)/emil/validation_sequence_final && find . -name "*.bin" | sort -V > filelist.txt
 
 show_all: visualize_sequence denoise_sequence_pretrained denoise_sequence_peters 
 	@python scripts/make_compare_video.py 
@@ -172,20 +172,37 @@ train_sbmc:
 compare_models:
 	@python scripts/compare_models.py \
 		--model1 $(OUTPUT)/emil/trained_models/final/epoch_1585.pth \
-		--model2 $(OUTPUT)/emil/trained_models/final_pretrained.pth \
+		--model2 $(OUTPUT)/emil/trained_models/pretrained.pth \
 		--save_dir $(OUTPUT)/emil/compare/img \
-		--data $(OUTPUT)/emil/validation_sequence_final/render_samples_seq \
+		--data $(OUTPUT)/emil/test_set/samples/sanmiguel \
 		--amount 20
 
 render_sample:
 	@python scripts/render_samples.py $(PBRT) \
 		$(OUTPUT)/emil/test_set/pbrt/sanmiguel_cam3.pbrt \
-		$(OUTPUT)/emil/test_set/samples/ \
+		$(OUTPUT)/emil/test_set/samples/scene-0_frame-1 \
 		--tmp_dir $(OUTPUT)/tmp --height 128 --width 128 --spp 4 \
-		--gt_spp 1
+		--gt_spp 64 --verbose
 	@python scripts/visualize_dataset.py \
 		$(OUTPUT)/emil/test_set/samples/ \
 		$(OUTPUT)/emil/test_set --spp 4 --frames 500
+
+generate_test_sequence:
+	@python scripts/generate_test_sequence.py \
+		$(PBRT) \
+		$(OBJ2PBRT) \
+		$(OUTPUT)/emil/test_set/samples/sanmiguel_cam14 \
+		--scene $(OUTPUT)/emil/test_set/pbrt/sanmiguel_cam14.pbrt \
+		--frames 1 --spp 64 --gt_spp 256 --width 128 --height 128
+	@python scripts/visualize_dataset.py \
+		$(OUTPUT)/emil/test_set/samples/sanmiguel_cam14/ \
+		$(OUTPUT)/emil/test_set/visualizations/sanmiguel_cam14/ --spp 4 --frames 500
+
+eval_spp:
+	@python scripts/eval_spp.py \
+		--model1 $(OUTPUT)/emil/trained_models/final/epoch_1585.pth \
+		--save_dir $(OUTPUT)/emil/eval \
+		--data $(OUTPUT)/emil/test_set/samples/sanmiguel_cam14 \
 
 # -----------------------------------------------------------------------------
 
