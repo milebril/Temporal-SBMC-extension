@@ -191,12 +191,12 @@ generate_test_sequence:
 	@python scripts/generate_test_sequence.py \
 		$(PBRT) \
 		$(OBJ2PBRT) \
-		$(OUTPUT)/emil/test_set/samples/sanmiguel_cam14 \
-		--scene $(OUTPUT)/emil/test_set/pbrt/sanmiguel_cam14.pbrt \
-		--frames 1 --spp 64 --gt_spp 256 --width 128 --height 128
+		$(OUTPUT)/emil/test_set/samples/sanmiguel_cam18\
+		--scene $(OUTPUT)/emil/test_set/pbrt/sanmiguel_cam18.pbrt \
+		--frames 20 --spp 1 --gt_spp 1 --width 128 --height 128
 	@python scripts/visualize_dataset.py \
-		$(OUTPUT)/emil/test_set/samples/sanmiguel_cam14/ \
-		$(OUTPUT)/emil/test_set/visualizations/sanmiguel_cam14/ --spp 4 --frames 500
+		$(OUTPUT)/emil/test_set/samples/sanmiguel_cam18/ \
+		$(OUTPUT)/emil/test_set/visualizations/sanmiguel_cam18/ --spp 1 --frames 500
 
 eval_spp:
 	@python scripts/eval_spp.py \

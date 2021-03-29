@@ -6,6 +6,7 @@ import shutil
 import os
 import fileinput
 import re
+import math
 
 from multiprocessing import Pool, JoinableQueue, cpu_count
 from generate_training_data import GeneratorParams, render
@@ -43,10 +44,10 @@ def main(args):
     camera_up = np.array([0.0, 0.0, 0.0])
 
     translate_look_dir = True
-    rotate_camera = True
 
-    # Rotate camera
-    theta = 0.4
+    # Roll camera
+    roll_camera = False
+    theta = 2 * math.pi / args.frames
 
     render_queue = JoinableQueue() 
     Pool(args.threads, render, (render_queue, ))
@@ -68,20 +69,32 @@ def main(args):
                     line_tmp = line.replace("  "," ")
                     coords = line_tmp.split(" ")
                     numbers = [float(x) for x in coords[1:9]]
+                    numbers.append(float(coords[-1].split('/')[0]))
+                    numbers = np.array(numbers)
+
+                    if current_frame == 10:
+                        axis = np.cross(numbers[3:6], numbers[6:])
+                        rot_matrix = rotation_matrix(axis, 0.1)
+                        numbers[3:6] = np.dot(rot_matrix, numbers[3:6])
+
+                    if current_frame == 15:    
+                        axis = np.cross(np.array(numbers[3:6]), np.array(numbers[6:]))
+                        rot_matrix = rotation_matrix(axis, -0.1)
+                        numbers[3:6] = np.dot(rot_matrix, numbers[3:6])
 
                     # Move along the camera direction
                     if translate_look_dir:
                         curr_pos = np.array(numbers[0:3])
                         look_at = np.array(numbers[3:6])
-                        diff = (look_at - curr_pos) * 0.2
+                        diff = (look_at - curr_pos) * 0.1
                         camera_translation = diff
                         camera_target = diff
-
+                    
                     numbers[0:3] = numbers[0:3] + camera_translation * current_frame
                     numbers[3:6] = numbers[3:6] + camera_target * current_frame
                     
                     #Rotate the camera
-                    if rotate_camera:
+                    if roll_camera:
                         axis = np.array(numbers[3:6])
                         rot_matrix = rotation_matrix(axis, theta * current_frame)
 
@@ -90,9 +103,9 @@ def main(args):
                         numbers[6:] = up[0:2]
                         coords[-1] = str(up[-1])
                     else:
-                        numbers[6::] = numbers[6::] + camera_up[0:2] * current_frame
-                        coords[-1] = str(float(coords[-1].split('/')[0]) + camera_up[-1] * current_frame) + '\n'
-                    coords[1:9] = [str(x) for x in numbers]
+                        numbers[6::] = numbers[6::] + camera_up[0:3] * current_frame
+                        # coords[-1] = str(float(coords[-1].split('/')[0]) + camera_up[-1] * current_frame) + '\n'
+                    coords[1:]= [str(x) for x in numbers]
                     print(line.replace(line, " ".join(coords)))
                 elif "Sampler" in line:
                     print(re.sub("\[\d*\]", f"[{args.gt_spp}]", line), end='')
