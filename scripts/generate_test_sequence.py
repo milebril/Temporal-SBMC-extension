@@ -1,4 +1,5 @@
 import argparse
+from operator import pos
 import ttools
 import numpy as np
 import subprocess
@@ -43,6 +44,10 @@ def main(args):
     camera_target = np.array([0.0, 0.0, 0.0])
     camera_up = np.array([0.0, 0.0, 0.0])
 
+    position = None
+    look_at = None
+    up = None
+
     translate_look_dir = True
 
     # Roll camera
@@ -68,44 +73,55 @@ def main(args):
                 if "LookAt" in line:
                     line_tmp = line.replace("  "," ")
                     coords = line_tmp.split(" ")
-                    numbers = [float(x) for x in coords[1:9]]
-                    numbers.append(float(coords[-1].split('/')[0]))
-                    numbers = np.array(numbers)
+                    
+                    # First iteration only
+                    if position is None:
+                        numbers = [float(x) for x in coords[1:9]]
+                        numbers.append(float(coords[-1].split('/')[0]))
+                        numbers = np.array(numbers)
 
-                    if current_frame == 10:
-                        axis = np.cross(numbers[3:6], numbers[6:])
-                        rot_matrix = rotation_matrix(axis, 0.1)
-                        numbers[3:6] = np.dot(rot_matrix, numbers[3:6])
+                        position = numbers[0:3]
+                        look_at = numbers[3:6]
+                        up = numbers[6:]
 
-                    if current_frame == 15:    
-                        axis = np.cross(np.array(numbers[3:6]), np.array(numbers[6:]))
-                        rot_matrix = rotation_matrix(axis, -0.1)
-                        numbers[3:6] = np.dot(rot_matrix, numbers[3:6])
+                    # Look up
+                    if current_frame == 15:
+                        diff = (look_at - position)
+                        axis = np.cross(diff, up)
+                        rot_matrix = rotation_matrix(axis, -0.05)
+                        look_at = np.dot(rot_matrix, look_at)
+                    elif current_frame == 30:
+                        diff = (look_at - position)
+                        axis = np.cross(diff, up)
+                        rot_matrix = rotation_matrix(axis, 0.05)
+                        look_at = np.dot(rot_matrix, look_at)
 
-                    # Move along the camera direction
+
                     if translate_look_dir:
-                        curr_pos = np.array(numbers[0:3])
-                        look_at = np.array(numbers[3:6])
-                        diff = (look_at - curr_pos) * 0.1
+                        diff = (look_at - position) * 0.1
                         camera_translation = diff
                         camera_target = diff
                     
-                    numbers[0:3] = numbers[0:3] + camera_translation * current_frame
-                    numbers[3:6] = numbers[3:6] + camera_target * current_frame
-                    
                     #Rotate the camera
                     if roll_camera:
-                        axis = np.array(numbers[3:6])
-                        rot_matrix = rotation_matrix(axis, theta * current_frame)
+                        axis = look_at
+                        rot_matrix = rotation_matrix(axis, theta)
+                        up = np.dot(rot_matrix, up)
 
-                        v = np.array([numbers[6], numbers[7], float(coords[-1].split('/')[0])])
-                        up = np.dot(rot_matrix, v)
-                        numbers[6:] = up[0:2]
-                        coords[-1] = str(up[-1])
-                    else:
-                        numbers[6::] = numbers[6::] + camera_up[0:3] * current_frame
-                        # coords[-1] = str(float(coords[-1].split('/')[0]) + camera_up[-1] * current_frame) + '\n'
-                    coords[1:]= [str(x) for x in numbers]
+                    position += camera_translation
+                    look_at += camera_target
+
+                    # if current_frame == 10:
+                    #     axis = np.cross(numbers[3:6], numbers[6:])
+                    #     rot_matrix = rotation_matrix(axis, 0.1)
+                    #     numbers[3:6] = np.dot(rot_matrix, numbers[3:6])
+
+                    # if current_frame == 15:    
+                    #     axis = np.cross(np.array(numbers[3:6]), np.array(numbers[6:]))
+                    #     rot_matrix = rotation_matrix(axis, -0.1)
+                    #     numbers[3:6] = np.dot(rot_matrix, numbers[3:6])
+
+                    coords[1:]= [str(x) for x in np.array(np.concatenate((position, look_at, up)))]
                     print(line.replace(line, " ".join(coords)))
                 elif "Sampler" in line:
                     print(re.sub("\[\d*\]", f"[{args.gt_spp}]", line), end='')

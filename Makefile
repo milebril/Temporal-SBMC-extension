@@ -171,10 +171,10 @@ train_sbmc:
 # Outputs RMSE comparisons and visual comparisons
 compare_models:
 	@python scripts/compare_models.py \
-		--model1 $(OUTPUT)/emil/trained_models/final/epoch_1585.pth \
+		--model1 $(OUTPUT)/emil/trained_models/best.pth \
 		--model2 $(OUTPUT)/emil/trained_models/pretrained.pth \
 		--save_dir $(OUTPUT)/emil/compare/img \
-		--data $(OUTPUT)/emil/test_set/samples/sanmiguel \
+		--data $(OUTPUT)/emil/test_set/samples/sanmiguel_cam18/ \
 		--amount 20
 
 render_sample:
@@ -187,13 +187,14 @@ render_sample:
 		$(OUTPUT)/emil/test_set/samples/ \
 		$(OUTPUT)/emil/test_set --spp 4 --frames 500
 
+#emil/training_sequence/render_samples_seq/scene-0_frame-0
 generate_test_sequence:
 	@python scripts/generate_test_sequence.py \
 		$(PBRT) \
 		$(OBJ2PBRT) \
 		$(OUTPUT)/emil/test_set/samples/sanmiguel_cam18\
 		--scene $(OUTPUT)/emil/test_set/pbrt/sanmiguel_cam18.pbrt \
-		--frames 20 --spp 1 --gt_spp 1 --width 128 --height 128
+		--frames 100 --spp 4 --gt_spp 512 --width 128 --height 128
 	@python scripts/visualize_dataset.py \
 		$(OUTPUT)/emil/test_set/samples/sanmiguel_cam18/ \
 		$(OUTPUT)/emil/test_set/visualizations/sanmiguel_cam18/ --spp 1 --frames 500

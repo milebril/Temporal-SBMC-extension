@@ -35,7 +35,11 @@ def main(args):
     temp = th.load(f"{args.model1}", map_location=th.device('cpu'))
     # model_one = sbmc.Multisteps(data.num_features, data.num_global_features)
     model_one = sbmc.RecurrentMultisteps(data.num_features, data.num_global_features)
-    model_one.load_state_dict(temp['model'])
+    try:
+        model_one.load_state_dict(temp['model'])
+    except:
+        model_one.load_state_dict(temp['model_state_dict'])
+
     model_one.train(False)
 
     temp = th.load(f"{args.model2}", map_location=th.device('cpu'))
