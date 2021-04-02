@@ -102,14 +102,27 @@ generate_render:
 
 
 generate_training_sequence:
-	# @rm -rf $(OUTPUT)/emil/training_sequence_final
+	@rm -rf $(OUTPUT)/emil/tmp_set
 	@python scripts/generate_training_sequence.py \
 		$(PBRT) \
 		$(OBJ2PBRT) \
 		$(DATA)/demo/scenegen_assets \
-		$(OUTPUT)/emil/training_sequence_final \
-		--count 1 --frames 1 --spp 4 --gt_spp 1024 --width 128 --height 128 --no-clean
-	@cd $(OUTPUT)/emil/training_sequence_final && find . -name "*.bin" | sort -V > filelist.txt
+		$(OUTPUT)/emil/tmp_set \
+		--count 4 --frames 4 --spp 4 --gt_spp 64 --width 128 --height 128 --no-clean
+	find $(OUTPUT)/emil/tmp_set/render_samples_seq/ -type f ! -name '*.bin' -print0 | xargs -0 rm -vf
+	find $(OUTPUT)/emil/tmp_set/render_samples_seq/ -type d -empty -print0 | xargs -0 rmdir -v
+	@cd $(OUTPUT)/emil/tmp_set && find . -name "*.bin" | sort -V > filelist.txt
+
+generate_complex_sequence:
+	@rm -rf $(OUTPUT)/emil/tmp_set
+	@python scripts/animate_pbrt_scene.py \
+		$(PBRT) \
+		$(OBJ2PBRT) \
+		$(OUTPUT)/emil/tmp_set/render_samples_seq \
+		--scenes $(OUTPUT)/emil/test_set/pbrt \
+		--count 10 --frames 1 --spp 4 --gt_spp 16 --width 128 --height 128
+	find $(OUTPUT)/emil/tmp_set/render_samples_seq/ -type d -empty -print0 | xargs -0 rmdir -vf
+	@cd $(OUTPUT)/emil/tmp_set && find . -name "*.bin" | sort -V > filelist.txt
 
 generate_validation_sequence:
 	# @rm -rf $(OUTPUT)/emil/validation_sequence_final
@@ -128,7 +141,7 @@ show_all: visualize_sequence denoise_sequence_pretrained denoise_sequence_peters
 # Ouputs the ground thruth render as well as the low spp render
 visualize_sequence:
 	@python scripts/visualize_dataset.py \
-		$(OUTPUT)/emil/training_sequence_final/render_samples_seq \
+		$(OUTPUT)/emil/tmp_set/render_samples_seq \
 		$(OUTPUT)/emil/dataviz_sequence --spp 4 --frames 500
 
 # Denoises a given sequence using the pretrained model from Gharbi et al
@@ -171,7 +184,7 @@ train_sbmc:
 # Outputs RMSE comparisons and visual comparisons
 compare_models:
 	@python scripts/compare_models.py \
-		--model1 $(OUTPUT)/emil/trained_models/best.pth \
+		--model1 $(OUTPUT)/emil/trained_models/final_v2/epoch_41.pth \
 		--model2 $(OUTPUT)/emil/trained_models/pretrained.pth \
 		--save_dir $(OUTPUT)/emil/compare/img \
 		--data $(OUTPUT)/emil/test_set/samples/sanmiguel_cam18/ \
@@ -189,21 +202,30 @@ render_sample:
 
 #emil/training_sequence/render_samples_seq/scene-0_frame-0
 generate_test_sequence:
-	@python scripts/generate_test_sequence.py \
+	@python scripts/animate_pbrt_scene.py \
 		$(PBRT) \
 		$(OBJ2PBRT) \
-		$(OUTPUT)/emil/test_set/samples/sanmiguel_cam18\
-		--scene $(OUTPUT)/emil/test_set/pbrt/sanmiguel_cam18.pbrt \
-		--frames 100 --spp 4 --gt_spp 512 --width 128 --height 128
+		$(OUTPUT)/emil/test_set/samples/sanmiguel\
+		--scene $(OUTPUT)/emil/test_set/pbrt/sanmiguel.pbrt \
+		--frames 1 --spp 4 --gt_spp 64 --width 128 --height 128
 	@python scripts/visualize_dataset.py \
-		$(OUTPUT)/emil/test_set/samples/sanmiguel_cam18/ \
-		$(OUTPUT)/emil/test_set/visualizations/sanmiguel_cam18/ --spp 1 --frames 500
+		$(OUTPUT)/emil/test_set/samples/sanmiguel \
+		$(OUTPUT)/emil/test_set/visualizations/sanmiguel/ --spp 4 --frames 500
 
 eval_spp:
 	@python scripts/eval_spp.py \
 		--model1 $(OUTPUT)/emil/trained_models/final/epoch_1585.pth \
 		--save_dir $(OUTPUT)/emil/eval \
 		--data $(OUTPUT)/emil/test_set/samples/sanmiguel_cam14 \
+
+eval_models:
+	@python scripts/eval_models.py \
+		--model1 $(OUTPUT)/emil/trained_models/final_v2/epoch_41.pth \
+		--save_dir $(OUTPUT)/emil/eval \
+		--data $(OUTPUT)/emil/test_set/samples/sanmiguel_cam14 \
+
+# find ./render_samples_seq/ -type f ! -name '*.bin' -print0 | xargs -0 rm -vf
+# find ./render_samples_seq/ -type d -empty -print0 | xargs -0 rmdir -v
 
 # -----------------------------------------------------------------------------
 
@@ -239,11 +261,11 @@ demo/visualize:
 
 # This demonstrates how to run pretrained models on .bin test scenes
 demo/denoise: demo/render_samples pretrained_models
-	@python scripts/denoise.py \
-		--input $(OUTPUT)/demo/test_samples \
-		--output $(OUTPUT)/demo/ours_4spp.exr \
-		--spp 4 \
-		--checkpoint $(DATA)/pretrained_models/gharbi2019_sbmc
+	# @python scripts/denoise.py \
+	# 	--input $(OUTPUT)/demo/test_samples \
+	# 	--output $(OUTPUT)/demo/ours_4spp.exr \
+	# 	--spp 4 \
+	# 	--checkpoint $(DATA)/pretrained_models/gharbi2019_sbmc
 	@python scripts/denoise.py \
 		--input $(OUTPUT)/demo/test_samples \
 		--output $(OUTPUT)/demo/bako2017_4spp.exr \
@@ -344,7 +366,7 @@ $(DATA)/demo/scenes/GITestSynthesizer_01/scene.pbrt:
 	@python scripts/download.py $(REMOTE)/demo.zip $(DATA)/demo.zip
 	cd $(DATA) && unzip demo.zip
 	rm $(DATA)/demo.zip
-
+	
 $(DATA)/pretrained_models/gharbi2019_sbmc/final.pth:
 	@echo "Downloading pretrained models (about 512 MB)"
 	@python scripts/download.py $(REMOTE)/pretrained_models.zip $(DATA)/pretrained_models.zip

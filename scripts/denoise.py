@@ -114,8 +114,6 @@ def denoise(args, input_root="", output_root=""):
     else:
         temp = th.load(f"{args.checkpoint}", map_location=th.device('cpu'))
         meta_params = temp['meta']
-    
-
     LOG.info("Setting up dataloader")
     data_params = meta_params["data_params"]
     if args.spp:
@@ -139,6 +137,7 @@ def denoise(args, input_root="", output_root=""):
     kpcn_mode = meta_params["kpcn_mode"]
     if kpcn_mode:
         LOG.info("Using [Bako2017] denoiser.")
+        print(data.num_features)
         model = sbmc.KPCN(data.num_features)
     if args.temporal:
         LOG.info("Using [Peters2020] denoiser.")
@@ -155,6 +154,7 @@ def denoise(args, input_root="", output_root=""):
     # Load the latest model from a directory
     # Or load the model if it's given directly
     if os.path.isdir(args.checkpoint):
+        print("HEIRHIE")
         checkpointer = ttools.Checkpointer(args.checkpoint, model, None)
         extras, meta = checkpointer.load_latest()
         LOG.info("Loading latest checkpoint {}".format(

@@ -20,7 +20,6 @@
 """Renders a .pbrt scene to a .exr image."""
 from sbmc import rendering
 
-
 if __name__ == "__main__":
     parser = rendering.PBRTRenderingParser(
         description="Render a .pbrt scene file using the default pathtracer"

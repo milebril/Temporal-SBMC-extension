@@ -237,5 +237,4 @@ class Camera():
                                                       self.shutterclose,
                                                       self.lensradius,
                                                       self.focaldistance)
-        print(s)
         return s

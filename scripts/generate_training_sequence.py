@@ -81,7 +81,7 @@ def create_scene_file(q, render_queue):
 
         # Create container
         dirname = "render_samples_seq"
-        dst_dir = os.path.abspath(os.path.join(params.output, dirname, f"scene-{idx}_frame-{0}"))
+        dst_dir = os.path.abspath(os.path.join(params.output, dirname, f"scene-{data['random']}_frame-{0}"))
 
         try:
             LOG.debug("Setting up folder {}".format(dst_dir))
@@ -106,11 +106,6 @@ def create_scene_file(q, render_queue):
         # rparams["width"] = width
         # rparams["height"] = height
 
-        # parameters = {"spp": rparams.spp, "gt_spp": rparams.gt_spp, "width":
-        #               width, "height": height, "path_depth":
-        #               rparams.path_depth, "random_crop_x": rparams.width,
-        #               "random_crop_h": rparams.height, "tile_size":
-        #               rparams.tile_size}
         renderer = scenegen.Renderer(**rparams)
 
         scn = scenegen.Scene(renderer=renderer)
@@ -118,12 +113,9 @@ def create_scene_file(q, render_queue):
         max_attempts = 20
         attempt = 0
         try:
-            gen = np.random.choice(params.gen)
+            gen = np.random.choice(params.gen) # Generator to use
 
-            # while not gen.sample_sequence(scn, dst_dir, idx=idx):
-            # while not gen.sample_cornellbox_scene(scn, dst_dir, idx=idx):
-            # while not gen.sample_wall_scene(scn, dst_dir, idx=idx):
-
+            # Random scene to be sampled with a small bias towards cornellbox scenes
             if np.random.random() < 0.30:
                 scene_type = gen.sample_wall_scene
             elif np.random.random() < 0.60:
@@ -152,9 +144,8 @@ def create_scene_file(q, render_queue):
         camera_translation = np.multiply(np.random.uniform(0.01, 0.03, (3,)) ,np.random.randint(-1,2,3))
 
         # Render the frames
-        start = 100
         for i in range(params.frames):
-            dst_dir = os.path.abspath(os.path.join(params.output, "render_samples_seq" ,f"scene-{idx + start}_frame-{i}"))
+            dst_dir = os.path.abspath(os.path.join(params.output, "render_samples_seq" ,f"scene-{data['random']}_frame-{i}"))
             try:
                 os.makedirs(dst_dir, exist_ok=True)
             except Exception as e:
@@ -223,7 +214,6 @@ def main(args):
                 "clean": args.clean,
                 "random": np.random.randint(0, 2147000000)
             }
-            print(data)
             if args.count > 0 and count == args.count:
                 break
             scene_queue.put(data, block=False)

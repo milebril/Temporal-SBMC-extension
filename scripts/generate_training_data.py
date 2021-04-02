@@ -260,7 +260,7 @@ def render(render_queue):
         dst_dir = data["scene_dir"]
         verbose = data["verbose"]
         clean = data["clean"]
-        LOG.info("Rendering scene '%s' using '%s'", dst_dir, params.renderer)
+        # LOG.info("Rendering scene '%s' using '%s'", dst_dir, params.renderer)
 
         try:
             os.chdir(dst_dir)

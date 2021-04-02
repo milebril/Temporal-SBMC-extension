@@ -69,9 +69,10 @@ class TensorboardCallback(KeyedCallback):
             self.trainer._stop()
 
         location = os.path.join(self.checkpoint_dir, "best")
-        os.makedirs(location)
+        os.makedirs(location, exist_ok=True)
 
         if (val_data['loss'] < self.lowest_val_loss):
+            self.lowest_val_loss = val_data['loss']
             # Save a copy of the model when the validation loss is at the lowest
             th.save({
                 'model_state_dict': self.interface.model.state_dict(),

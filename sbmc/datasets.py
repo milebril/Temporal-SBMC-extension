@@ -31,7 +31,6 @@ LOG = ttools.get_logger(__name__)
 
 __all__ = ["TilesDataset", "FullImagesDataset", "MultiSampleCountDataset"]
 
-
 class TilesDataset(Dataset):
     """A dataset class that fetches samples from tiles stored in .bin files.
 
@@ -282,10 +281,13 @@ class TilesDataset(Dataset):
                 last_num = parts[-1]
 
                 return int(first_num + last_num)
-
-            scenes = [os.path.join(path, d) for d in
-                      sorted(os.listdir(self.root), key=myKeyFunc)]
-            # print(scenes)
+                
+            try:
+                scenes = [os.path.join(path, d) for d in
+                        sorted(os.listdir(self.root), key=myKeyFunc)]
+            except:
+                scenes = [os.path.join(path, d) for d in
+                        sorted(os.listdir(self.root))]
             self.scenes = [s for s in scenes if os.path.isdir(s)]
             self.tiles = {}
             self.indices = {}
