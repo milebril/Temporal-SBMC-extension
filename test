@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+echo "Starting render script on $HOSTNAME"
+sleep 30s
+
