@@ -120,7 +120,7 @@ def animate_scene(data, camera_translation=np.zeros((3,)), camera_target=np.zero
                     position += camera_translation
                     look_at += camera_target
 
-                    coords[1:]= [str(x) for x in np.around(np.array(np.concatenate((position, look_at, up)), decimals=7))]
+                    coords[1:]= [str(x) for x in np.around(np.array(np.concatenate((position, look_at, up))), decimals=7)]
 
                     print(line.replace(line, " ".join(coords)))
                 elif "Sampler" in line:
