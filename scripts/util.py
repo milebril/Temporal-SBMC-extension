@@ -67,7 +67,7 @@ def animate_scene(data, camera_translation=np.zeros((3,)), camera_target=np.zero
     for curr_frame in range(data.frames):
 
         # Copy the scne to a temporary file
-        tmp_scene = os.path.join(os.path.dirname(os.path.abspath(data.scene)), f'tmp_{curr_frame}.pbrt')
+        tmp_scene = os.path.join(os.path.dirname(os.path.abspath(data.scene)), f'tmp_{data.scene_name}_{curr_frame}.pbrt')
         shutil.copy(data.scene, tmp_scene)
 
         # Update the camera position & write scene to temporary file to render
@@ -120,7 +120,8 @@ def animate_scene(data, camera_translation=np.zeros((3,)), camera_target=np.zero
                     position += camera_translation
                     look_at += camera_target
 
-                    coords[1:]= [str(x) for x in np.array(np.concatenate((position, look_at, up)))]
+                    coords[1:]= [str(x) for x in np.around(np.array(np.concatenate((position, look_at, up)), decimals=7))]
+
                     print(line.replace(line, " ".join(coords)))
                 elif "Sampler" in line:
                     print(re.sub("\[\d*\]", f"[{data.gt_spp}]", line), end='')

@@ -100,7 +100,6 @@ generate_render:
 		$(OUTPUT)/emil/training_sequence_tmp/render_samples_seq \
 		$(OUTPUT)/emil/dataviz_sequence --spp 4 --frames 30
 
-
 generate_training_sequence:
 	@rm -rf $(OUTPUT)/emil/tmp_set
 	@python scripts/generate_training_sequence.py \
@@ -108,7 +107,7 @@ generate_training_sequence:
 		$(OBJ2PBRT) \
 		$(DATA)/demo/scenegen_assets \
 		$(OUTPUT)/emil/tmp_set \
-		--count 4 --frames 4 --spp 4 --gt_spp 64 --width 128 --height 128 --no-clean
+		--count 50 --frames 5 --spp 4 --gt_spp 1024 --width 128 --height 128 --no-clean
 	find $(OUTPUT)/emil/tmp_set/render_samples_seq/ -type f ! -name '*.bin' -print0 | xargs -0 rm -vf
 	find $(OUTPUT)/emil/tmp_set/render_samples_seq/ -type d -empty -print0 | xargs -0 rmdir -v
 	@cd $(OUTPUT)/emil/tmp_set && find . -name "*.bin" | sort -V > filelist.txt
@@ -121,7 +120,8 @@ generate_complex_sequence:
 		$(OUTPUT)/emil/tmp_set/render_samples_seq \
 		--scenes $(OUTPUT)/emil/test_set/pbrt \
 		--count 10 --frames 1 --spp 4 --gt_spp 16 --width 128 --height 128
-	find $(OUTPUT)/emil/tmp_set/render_samples_seq/ -type d -empty -print0 | xargs -0 rmdir -vf
+	find $(OUTPUT)/emil/tmp_set/render_samples_seq/ -type f ! -name '*.bin' -print0 | xargs -0 rm -vf
+	find $(OUTPUT)/emil/tmp_set/render_samples_seq/ -type d -empty -print0 | xargs -0 rmdir -v
 	@cd $(OUTPUT)/emil/tmp_set && find . -name "*.bin" | sort -V > filelist.txt
 
 generate_validation_sequence:
@@ -156,11 +156,11 @@ denoise_sequence_pretrained:
 # Denoises the given sequence using the temporal extension to SBMC
 denoise_sequence_peters:
 	@python scripts/denoise.py \
-		--input $(OUTPUT)/emil/training_sequence_outdoor/render_samples_seq \
+		--input $(OUTPUT)/emil/tmp_set/render_samples_seq \
 		--output $(OUTPUT)/emil/dataviz_sequence/denoised/peters/ \
 		--spp 4 --sequence --temporal \
 		--checkpoint $(OUTPUT)/emil/trained_models/peters_all_loaded.pth \
-		--frames 5
+		--frames 30
 
 # Trains the recurrent SBMC model
 train_emil:
@@ -187,7 +187,7 @@ compare_models:
 		--model1 $(OUTPUT)/emil/trained_models/final_v2/epoch_41.pth \
 		--model2 $(OUTPUT)/emil/trained_models/pretrained.pth \
 		--save_dir $(OUTPUT)/emil/compare/img \
-		--data $(OUTPUT)/emil/test_set/samples/sanmiguel_cam18/ \
+		--data $(OUTPUT)/emil/tmp_set/render_samples_seq \
 		--amount 20
 
 render_sample:
@@ -205,12 +205,12 @@ generate_test_sequence:
 	@python scripts/animate_pbrt_scene.py \
 		$(PBRT) \
 		$(OBJ2PBRT) \
-		$(OUTPUT)/emil/test_set/samples/sanmiguel\
-		--scene $(OUTPUT)/emil/test_set/pbrt/sanmiguel.pbrt \
-		--frames 1 --spp 4 --gt_spp 64 --width 128 --height 128
-	@python scripts/visualize_dataset.py \
-		$(OUTPUT)/emil/test_set/samples/sanmiguel \
-		$(OUTPUT)/emil/test_set/visualizations/sanmiguel/ --spp 4 --frames 500
+		$(OUTPUT)/emil/test_set/samples/sanmiguel_cam14 \
+		--scene $(OUTPUT)/emil/test_set/pbrt/sanmiguel_cam14.pbrt \
+		--frames 30 --spp 64 --gt_spp 4096 --width 128 --height 128
+	# @python scripts/visualize_dataset.py \
+	# 	$(OUTPUT)/emil/test_set/samples/sanmiguel \
+	# 	$(OUTPUT)/emil/test_set/visualizations/sanmiguel/ --spp 4 --frames 500
 
 eval_spp:
 	@python scripts/eval_spp.py \

@@ -265,6 +265,7 @@ class TilesDataset(Dataset):
             with open(path) as fid:
                 for l in fid.readlines():
                     self.files.append(os.path.join(self.root, l.strip()))
+            # self.files = self.files[:200]
             self.count = len(self.files)
         elif os.path.isdir(path):  # We have a root folder
             self.io_mode = TilesDataset.FOLDERS_MODE
@@ -292,7 +293,7 @@ class TilesDataset(Dataset):
             self.tiles = {}
             self.indices = {}
             idx = 0
-            for s in self.scenes:
+            for num_examples, s in enumerate(self.scenes):
                 self.tiles[s] = []
                 beg_idx = idx
                 files = sorted(os.listdir(s))
@@ -495,7 +496,7 @@ class TilesDataset(Dataset):
 
         The first calls sets the metadata for this object.
         """
-        if getattr(self, field) is not None:
+        if getattr(self, field) is not None and getattr(self, field) is not "gt_sample_count":
             if getattr(self, field) != value and field:
                 LOG.error("metadata do not match, got %s for field %s, should"
                           " be %s" % (value, field, getattr(self, field)))
@@ -531,7 +532,10 @@ class TilesDataset(Dataset):
         self._rcheck("image_width", struct.unpack('i', fid.read(4))[0])
         self._rcheck("image_height", struct.unpack('i', fid.read(4))[0])
         self._rcheck("sample_count", struct.unpack('i', fid.read(4))[0])
-        self._rcheck("gt_sample_count", struct.unpack('i', fid.read(4))[0])
+        if "validation" in self.scenes[0]:
+            fid.read(4)
+        else:
+            self._rcheck("gt_sample_count", struct.unpack('i', fid.read(4))[0])
         self._rcheck("sample_features", struct.unpack('i', fid.read(4))[0])
         self._rcheck("pixel_features", struct.unpack('i', fid.read(4))[0])
         self._rcheck("path_depth", struct.unpack('i', fid.read(4))[0])
