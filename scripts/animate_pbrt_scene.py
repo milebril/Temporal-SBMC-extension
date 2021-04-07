@@ -57,7 +57,8 @@ def main(args):
             LOG.info(f"Animated scene {random_scene.split('/')[-1]}")
             args.scene = random_scene
             scene_name = f"scene-{np.random.randint(2147000000)}_"
-            args.scene_name = scene_name    
+            d = vars(args)
+            d['scene_name'] = scene_name
             # Add random animation
             follow = np.random.choice([True, False])
             follow = False
