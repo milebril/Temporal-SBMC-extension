@@ -56,10 +56,12 @@ def main(args):
             random_scene = np.random.choice(scenes)
             LOG.info(f"Animated scene {random_scene.split('/')[-1]}")
             args.scene = random_scene
-            print(args)
-            # Add random animation
             follow = np.random.choice([True, False])
-            follow = False
+            follow = True
+
+            scene_name = f"scene-{np.random.randint(2147000000)}_"
+            d = vars(args)
+            d['scene_name'] = scene_name
 
             if not follow:
                 translation = np.random.uniform(0,2,3)
