@@ -26,3 +26,5 @@ runs/
 data/demo/scenegen_assets/envmaps/
 
 data/demo/scenegen_assets/models/sample/models/
+
+*.p

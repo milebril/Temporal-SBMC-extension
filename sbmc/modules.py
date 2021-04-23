@@ -22,6 +22,10 @@ import torch as th
 import torch.nn as nn
 import torch.nn.functional as F
 
+import sys
+import matplotlib.pyplot as plt
+from torch.utils.data import dataloader
+
 import ttools
 
 from . import functions as funcs
@@ -581,6 +585,27 @@ class RecurrentConvChain(nn.Module):
         self.passes = 0
 
     def forward(self, x):
+        # print(x.shape[1])
+        # fig, axeslist = plt.subplots(ncols=int(x.shape[1] / 8), nrows=8)
+
+        # for i in range (0, x.shape[1]):
+        #     if i == x.shape[1]: 
+        #         data = th.clamp(x[:, i:], 0)
+        #     else:
+        #         data = th.clamp(x[:, i:i+1], 0)
+        #     data /= 1 + data
+        #     data = th.pow(data, 1.0/2.2)
+        #     data = th.clamp(data, 0, 1)
+
+        #     data = data[0, ...].cpu().detach().numpy().transpose([1, 2, 0])
+        #     data = np.ascontiguousarray(data)
+        #     # print(data.shape)
+            
+        #     axeslist.ravel()[i].imshow(data)
+        #     axeslist.ravel()[i].set_axis_off()
+
+        # plt.show()
+
         if type(self.hidden_tensor) == type(None):
             self.hidden_tensor = self.init_hidden(x)
 
@@ -591,6 +616,31 @@ class RecurrentConvChain(nn.Module):
                 x = m(x)
                 
         self.hidden_tensor = x
+
+        ###### TEMP #####
+        # fig, axeslist = plt.subplots(ncols=int(128 / 8), nrows=8)
+
+        # for i in range (0, 128):
+        #     if i == 128: 
+        #         data = th.clamp(self.hidden_tensor[:, i:], 0)
+        #     else:
+        #         data = th.clamp(self.hidden_tensor[:, i:i+1], 0)
+        #     print(data.shape)
+        #     data /= 1 + data
+        #     data = th.pow(data, 1.0/2.2)
+        #     data = th.clamp(data, 0, 1)
+
+        #     data = data[0, ...].cpu().detach().numpy().transpose([1, 2, 0])
+        #     data = np.ascontiguousarray(data)
+        #     # print(data.shape)
+            
+        #     axeslist.ravel()[i].imshow(data)
+        #     axeslist.ravel()[i].set_axis_off()
+
+        # plt.show()
+
+        # sys.exit()
+        ###### TEMP #####
 
         # Keep the hiddenstate to backprop through it
         # Reset the hidden state after a sequence is finished and detatch it

@@ -130,7 +130,7 @@ def main(args):
 
     # Launch the training
     LOG.info("Training started, 'Ctrl+C' to abort.")
-    trainer.train(dataloader, num_epochs=2000,
+    trainer.train(dataloader, num_epochs=50,
                 val_dataloader=val_dataloader)
 
 """
@@ -157,11 +157,15 @@ def load_sbmc(model):
         layer_name, weights = new[count]
 
         # Skip the modules with recurrent connections   
-        # if 'propagation_02' in layer_name and 'left' in layer_name:
-        if 'propagation' in layer_name:
+        if any(x in layer_name for x in ['net.left.layer_0.layer.0.weight_v', 'net.next_level.left.layer_0.layer.0.weight_v']):
+            shape = weights.shape
+            new_weights = th.zeros(shape[0], shape[1] + shape[0], shape[2], shape[3])
+            new_weights[:, :shape[1]] = weights
+            #print(new_weights.shape)
+            my_model_kvpair[key] = new_weights
             count+=1
             continue
-        # print(f"Layer: {layer_name}")
+
         my_model_kvpair[key] = weights
         count+=1
 

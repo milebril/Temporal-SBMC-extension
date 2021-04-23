@@ -9,6 +9,8 @@ import pyexr
 import cv2
 import skimage.io as skio
 from ttools.modules.image_operators import crop_like
+import matplotlib.pyplot as plt
+from collections import defaultdict
 
 from sbmc import losses
 from sbmc import modules
@@ -59,6 +61,10 @@ def main(args):
     # start = np.random.randint(0, 80) * 5
     start = 0
 
+    model_one_outputs = []
+    model_two_outputs = []
+    ground_thruths = []
+
     for batch_idx, batch in enumerate(dataloader):
         if batch_idx < start:
             continue
@@ -75,9 +81,12 @@ def main(args):
         with th.no_grad():
             output1 = model_one(batch)["radiance"]
             output2 = model_two(batch)["radiance"]
+        model_one_outputs.append(output1)
+        model_two_outputs.append(output2)
 
         # Get the input image and ground thruth for comparison
         tgt = crop_like(batch["target_image"], output1)
+        ground_thruths.append(tgt)
         low_spp = crop_like(batch["low_spp"], output1)
 
         # Compare to ground thruth
@@ -92,8 +101,53 @@ def main(args):
             LOG.info("Model 1 outperformed model 2")
 
         save_img(output1, output2, low_spp, tgt, args.save_dir, str(batch_idx))
-    #     save_compare_frame(output1, output2, tgt)
+
+    #Compute differences
+    diff_array = []
+    fig, axeslist = plt.subplots(ncols=len(model_one_outputs), nrows=3)
+    rmse_data = defaultdict(list) 
+
+    data_to_show = [model_one_outputs, model_two_outputs, ground_thruths]
+
+    for i, data in enumerate(data_to_show):
+        for idx, img in enumerate(data):
+            if idx > 0:
+                diff = (img - data[idx-1]).abs()
+                rmse = rmse_checker(img, data[idx-1]).item()
+                rmse_data[str(i)].append(rmse)
+            else:
+                diff = th.zeros_like(tgt)
+                rmse = 0
+
+            res = process_radiance(diff)
+            diff_array.append({'img': res, 'rmse': rmse})
+
+    # Create image matrix
+    for ind, data in enumerate(diff_array):
+        axeslist.ravel()[ind].imshow(data['img'])
+        axeslist.ravel()[ind].set_title(str(round(data['rmse'], 5)))
+        axeslist.ravel()[ind].set_axis_off()
+
+    plt.tight_layout() # optional
+    plt.show()
+
+    for k in enumerate(rmse_data):
+        print(k)
+        # plt.plot(rmse_data[k])
+    # plt.show()
+
+    # save_compare_frame(output1, output2, tgt)
     # make_compare_video(args.save_dir)
+
+def process_radiance(data):
+    data = th.clamp(data, 0)
+    data /= 1 + data
+    data = th.pow(data, 1.0/2.2)
+    data = th.clamp(data, 0, 1)
+
+    data = data[0, ...].cpu().detach().numpy().transpose([1, 2, 0])
+    data = np.ascontiguousarray(data)
+    return data
 
 frames = []
 def save_compare_frame(radiance1, radiance2, tgt):
