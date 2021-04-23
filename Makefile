@@ -165,9 +165,9 @@ denoise_sequence_peters:
 # Trains the recurrent SBMC model
 train_emil:
 	@python scripts/train.py \
-		--checkpoint_dir $(OUTPUT)/emil/training_peters_tmp \
-		--data $(OUTPUT)/emil/training_sequence_final/filelist.txt \
-		--val_data $(OUTPUT)/emil/validation_sequence_final/filelist.txt \
+		--checkpoint_dir $(OUTPUT)/emil/training_peters_dropout \
+		--data $(OUTPUT)/emil/training_set/filelist.txt \
+		--val_data $(OUTPUT)/emil/validation_set/filelist.txt \
 		--env sbmc_ours --port 2001 --bs 1 --constant_spp --emil_mode \
 		--spp 4
 
