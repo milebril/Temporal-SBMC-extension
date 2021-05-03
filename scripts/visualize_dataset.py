@@ -52,7 +52,7 @@ def main(args):
         ref = sample["target_image"]
         low_spp = sample["low_spp"]
         # LOG.info("  target radiance: %.2f -- %.2f", im.min().item(), im.max().item())
-        _save(args.output, "%04d_reference.png" % idx, ref)
+        # _save(args.output, "%04d_reference.png" % idx, ref)
         _save(args.output, "%04d_low_spp.png" % idx, low_spp)
 
         if not args.dump_features:

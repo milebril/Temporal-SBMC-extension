@@ -106,7 +106,7 @@ generate_training_sequence:
 		$(OBJ2PBRT) \
 		$(DATA)/demo/scenegen_assets \
 		$(OUTPUT)/emil/training_set_stilstaand \
-		--count 100 --frames 5 --spp 4 --gt_spp 2048 --width 128 --height 128 --threads 4
+		--count 50 --frames 5 --spp 4 --gt_spp 2096 --width 128 --height 128 --threads 1 --no-clean
 	# find $(OUTPUT)/emil/tmp_set/render_samples_seq/ -type f ! -name '*.bin' -print0 | xargs -0 rm -vf
 	# find $(OUTPUT)/emil/tmp_set/render_samples_seq/ -type d -empty -print0 | xargs -0 rmdir -v
 	@cd $(OUTPUT)/emil/training_set_stilstaand && find . -name "*.bin" | sort -V > filelist.txt
@@ -141,7 +141,7 @@ show_all: visualize_sequence denoise_sequence_pretrained denoise_sequence_peters
 visualize_sequence:
 	@python scripts/visualize_dataset.py \
 		$(OUTPUT)/emil/training_set_stilstaand/render_samples_seq   \
-		$(OUTPUT)/emil/training_set_stilstaand   --spp 4 --frames 5
+		$(OUTPUT)/emil/training_set_stilstaand --spp 4 --frames 10
 
 # Denoises a given sequence using the pretrained model from Gharbi et al
 denoise_sequence_pretrained:

@@ -164,8 +164,7 @@ def create_scene_file(q, render_queue):
                 q.task_done()
                 continue
 
-
-            render_data = {"idx": idx, "gen_params": params, "render_params":
+            render_data = {"idx": idx+i, "gen_params": params, "render_params":
                         rparams, "scene_dir": dst_dir, "verbose":
                         data["verbose"], "clean": data["clean"]}
             LOG.info("Adding scene #%d f%d to the render queue", idx, i)
@@ -224,6 +223,11 @@ def main(args):
 
         LOG.debug("Waiting for render queue.")
         render_queue.join()
+
+        try:
+            _clean_bin_folder(os.path.join(args.output, f'render_samples_seq/scene-{str(data["random"])}_frame-0'))
+        except:
+            pass
 
         LOG.debug("Finished all queues.")
 
