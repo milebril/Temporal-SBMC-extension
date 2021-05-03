@@ -116,12 +116,12 @@ def create_scene_file(q, render_queue):
             gen = np.random.choice(params.gen) # Generator to use
 
             # Random scene to be sampled with a small bias towards cornellbox scenes
-            # if np.random.random() < 0.30:
-            scene_type = gen.sample_wall_scene
-            # elif np.random.random() < 0.60:
-            #     scene_type = gen.sample_sequence
-            # else:
-            #     scene_type = gen.sample_cornellbox_scene
+            if np.random.random() < 0.10:
+                scene_type = gen.sample_sequence
+            elif np.random.random() < 0.60:
+                scene_type = gen.sample_wall_scene
+            else:
+                scene_type = gen.sample_cornellbox_scene
             while not scene_type(scn, dst_dir, idx=idx):
                 attempt += 1
                 LOG.warning("Sampling another Scene {}".format(gen))

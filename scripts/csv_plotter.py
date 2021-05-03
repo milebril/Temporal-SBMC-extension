@@ -5,7 +5,7 @@ import os
 import numpy as np
 from scipy.interpolate import make_interp_spline, BSpline
 
-file_location = '/home/emil//Documents/Temporal-SBMC-extension/output/emil/trained_models/final_v3/csv_data/'
+file_location = '/home/emil//Documents/Temporal-SBMC-extension/output/emil/trained_models/final_v3/aa_csv_data/'
 
 all = 'final_v2_all'
 all_scratch = 'final_v2_all_scratch'
@@ -59,7 +59,7 @@ if __name__ == '__main__':
     # tag = tags[2]
     colors = ['red', 'green', 'orange']
 
-    save = True
+    save = False
     start = 5
 
     for i, tag in enumerate(tags):
@@ -88,7 +88,8 @@ if __name__ == '__main__':
         ax.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.1e'))
 
         # extent = full_extent(ax)
-        fig.savefig(f'{file_location}{tag.replace("/", "_")}.png', bbox_inches= 'tight', dpi=100)
+        if save:
+            fig.savefig(f'{file_location}{tag.replace("/", "_")}.png', bbox_inches= 'tight', dpi=100)
 
         # ax.savefig(f'{file_location}{tag}.png', bbox_inches="tight")
     plt.tight_layout(pad=3.0)

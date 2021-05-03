@@ -568,8 +568,8 @@ class OutdoorSceneGenerator(SceneGenerator):
         cam_position = [0.0, 0.0, 0.0]
         cam_target = [0.0, 0.0, -1.0]
         cam_up = [0.0, 1, 0]
-        cam_fov = np.random.uniform(40, 90) # Random FOV between 40-90
-
+        #cam_fov = np.random.uniform(40, 90) # Random FOV between 40-90
+        cam_fov = 85
         cam_params = {
             "position": list(cam_position),
             "target": list(cam_target),
@@ -704,7 +704,8 @@ class OutdoorSceneGenerator(SceneGenerator):
         # Light Source on ceiling
         light_geom = geometry.GoodPlane(scale=1)
         xforms.rotate(light_geom, [1, 0, 0], 180)
-        xforms.translate(light_geom, [np.random.uniform(0, 2) - 1, 2.99, -np.random.uniform(5, 6)])
+        #xforms.translate(light_geom, [np.random.uniform(0, 2) - 1, 2.99, -np.random.uniform(5, 6)])
+        xforms.translate(light_geom, [np.random.uniform(0, 2) - 1, 2.99, 0])
         # xforms.translate(light_geom, [0, np.random.uniform(2, 4), -5])
         random_luminosity = np.random.randint(50,150, size=(3,))
         light = lights.AreaLight(light_geom, spectrum=random_luminosity)

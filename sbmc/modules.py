@@ -594,7 +594,8 @@ class RecurrentConvChain(nn.Module):
 
         for idx, m in enumerate(self.children()):
             if idx == 0:
-                x = self.dropout_layer(m(th.cat([x, self.hidden_tensor], 1)))
+                # x = self.dropout_layer(m(th.cat([x, self.hidden_tensor], 1)))
+                x = m(th.cat([x, self.hidden_tensor], 1))
             else:
                 x = m(x)
                 

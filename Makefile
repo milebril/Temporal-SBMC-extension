@@ -101,16 +101,15 @@ generate_render:
 		$(OUTPUT)/emil/dataviz_sequence --spp 4 --frames 30
 
 generate_training_sequence:
-	# @rm -rf $(OUTPUT)/emil/tmp_set
 	@python scripts/generate_training_sequence.py \
 		$(PBRT) \
 		$(OBJ2PBRT) \
 		$(DATA)/demo/scenegen_assets \
-		$(OUTPUT)/emil/test_set/samples/stilstaand_wall/ \
-		--count 1 --frames 5 --spp 4 --gt_spp 4096 --width 128 --height 128 --no-clean --threads 1
+		$(OUTPUT)/emil/training_set_stilstaand \
+		--count 100 --frames 5 --spp 4 --gt_spp 2048 --width 128 --height 128 --threads 4
 	# find $(OUTPUT)/emil/tmp_set/render_samples_seq/ -type f ! -name '*.bin' -print0 | xargs -0 rm -vf
 	# find $(OUTPUT)/emil/tmp_set/render_samples_seq/ -type d -empty -print0 | xargs -0 rmdir -v
-	# @cd $(OUTPUT)/emil/tmp_set && find . -name "*.bin" | sort -V > filelist.txt
+	@cd $(OUTPUT)/emil/training_set_stilstaand && find . -name "*.bin" | sort -V > filelist.txt
 
 generate_complex_sequence:
 	@rm -rf $(OUTPUT)/emil/tmp_set
@@ -141,8 +140,8 @@ show_all: visualize_sequence denoise_sequence_pretrained denoise_sequence_peters
 # Ouputs the ground thruth render as well as the low spp render
 visualize_sequence:
 	@python scripts/visualize_dataset.py \
-		$(OUTPUT)/emil/tmp_set/render_samples_seq \
-		$(OUTPUT)/emil/dataviz_sequence --spp 4 --frames 500
+		$(OUTPUT)/emil/training_set_stilstaand/render_samples_seq   \
+		$(OUTPUT)/emil/training_set_stilstaand   --spp 4 --frames 5
 
 # Denoises a given sequence using the pretrained model from Gharbi et al
 denoise_sequence_pretrained:
@@ -156,10 +155,10 @@ denoise_sequence_pretrained:
 # Denoises the given sequence using the temporal extension to SBMC
 denoise_sequence_peters:
 	@python scripts/denoise.py \
-		--input $(OUTPUT)/emil/tmp_set/render_samples_seq \
-		--output $(OUTPUT)/emil/dataviz_sequence/denoised/peters/ \
+		--input $(OUTPUT)/emil/test_set/samples/sanmiguel_cam14 \
+		--output $(OUTPUT)/emil/test_set/samples/sanmiguel_cam14/ \
 		--spp 4 --sequence --temporal \
-		--checkpoint $(OUTPUT)/emil/trained_models/peters_all_loaded.pth \
+		--checkpoint $(OUTPUT)/emil/trained_models/final_v3/better_loaded/training_end.pth \
 		--frames 30
 
 # Trains the recurrent SBMC model
@@ -184,21 +183,21 @@ train_sbmc:
 # Outputs RMSE comparisons and visual comparisons
 compare_models:
 	@python scripts/compare_models.py \
-		--model1 $(OUTPUT)/emil/trained_models/final_v3/final_v2_all/training_end.pth \
-		--model2 $(OUTPUT)/emil/trained_models/pretrained.pth \
+		--model1 $(OUTPUT)/emil/trained_models/final_v3/peters_scratch/best.pth \
+		--model2 $(OUTPUT)/emil/trained_models/final_v3/sbmc_scratch/best.pth \
 		--save_dir $(OUTPUT)/emil/compare/img \
-		--data $(OUTPUT)/emil/test_set/samples/stilstaand/render_samples_seq \
-		--amount 10
+		--data $(OUTPUT)/emil/test_set/samples/sanmiguel_cam18_short/ \
+		--amount 5
 
-render_sample:
+render_samples:
 	@python scripts/render_samples.py $(PBRT) \
-		$(OUTPUT)/emil/test_set/pbrt/sanmiguel_cam3.pbrt \
-		$(OUTPUT)/emil/test_set/samples/scene-0_frame-1 \
+		/home/emil/Documents/Temporal-SBMC-extension/data/demo/scenes/GITestSynthesizer_01/cornell-box.pbrt \
+		$(OUTPUT)/emil/test_set/samples/cornell_paper/scene \
 		--tmp_dir $(OUTPUT)/tmp --height 128 --width 128 --spp 4 \
 		--gt_spp 64 --verbose
-	@python scripts/visualize_dataset.py \
-		$(OUTPUT)/emil/test_set/samples/ \
-		$(OUTPUT)/emil/test_set --spp 4 --frames 500
+	#@python scripts/visualize_dataset.py \
+	#	$(OUTPUT)/emil/test_set/samples/cornell_paper \
+	#	$(OUTPUT)/emil/test_set --spp 4 --frames 500
 
 #emil/training_sequence/render_samples_seq/scene-0_frame-0
 generate_test_sequence:

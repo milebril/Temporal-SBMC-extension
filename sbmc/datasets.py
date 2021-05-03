@@ -535,7 +535,7 @@ class TilesDataset(Dataset):
         # if "validation" in self.scenes[0]:
         fid.read(4)
         # else:
-        #     self._rcheck("gt_sample_count", struct.unpack('i', fid.read(4))[0])
+        # self._rcheck("gt_sample_count", struct.unpack('i', fid.read(4))[0])
         self._rcheck("sample_features", struct.unpack('i', fid.read(4))[0])
         self._rcheck("pixel_features", struct.unpack('i', fid.read(4))[0])
         self._rcheck("path_depth", struct.unpack('i', fid.read(4))[0])

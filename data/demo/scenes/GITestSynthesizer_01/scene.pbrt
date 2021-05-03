@@ -1,4 +1,6 @@
 LookAt 0 0 3  0 0 0  0 1 0
+
+SurfaceIntegrator "path" "integer maxdepth" [5] "string strategy" "all"
 Camera "perspective" "float fov" [45] "float shutteropen" [0.0] "float shutterclose" [0.0] "float lensradius" [0.0] "float focaldistance" [0.0]
 TransformTimes 0.0 1.0
 

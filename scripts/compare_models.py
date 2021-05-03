@@ -20,6 +20,7 @@ import ttools
 import sbmc
 
 LOG = ttools.get_logger(__name__)
+ttools.get_logger('matplotlib.font_manager').disabled = True
 
 #'ksize': 21, 'gather': False, 'pixel': False
 
@@ -37,7 +38,7 @@ def main(args):
     temp = th.load(f"{args.model1}", map_location=th.device('cpu'))
     # model_one = sbmc.Multisteps(data.num_features, data.num_global_features)
     model_one = sbmc.RecurrentMultisteps(data.num_features, data.num_global_features)
-    try:
+    try: # Depending on the way a model is saved, the statedict is referenced with different keys
         model_one.load_state_dict(temp['model'])
     except:
         model_one.load_state_dict(temp['model_state_dict'])
@@ -46,7 +47,10 @@ def main(args):
 
     temp = th.load(f"{args.model2}", map_location=th.device('cpu'))
     model_two = sbmc.Multisteps(data.num_features, data.num_global_features)
-    model_two.load_state_dict(temp['model'])
+    try: # Depending on the way a model is saved, the statedict is referenced with different keys
+        model_two.load_state_dict(temp['model'])
+    except:
+        model_two.load_state_dict(temp['model_state_dict'])
     model_two.train(False)
 
     device = "cuda" if th.cuda.is_available() else "cpu"
@@ -102,7 +106,27 @@ def main(args):
 
         save_img(output1, output2, low_spp, tgt, args.save_dir, str(batch_idx))
 
-    #Compute differences
+    #Display Denoising quality
+    data_to_show = [model_one_outputs, model_two_outputs, ground_thruths]
+    fig, axeslist = plt.subplots(ncols=len(model_one_outputs), nrows=len(data_to_show))
+    plot_data = []
+
+    for i, data in enumerate(data_to_show):
+        for idx, img in enumerate(data):
+            rmse = rmse_checker(img, ground_thruths[idx]).item()
+            res = process_radiance(img)
+            plot_data.append({'img': res, 'rmse': rmse})
+
+    # Create image matrix
+    for ind, data in enumerate(plot_data):
+        axeslist.ravel()[ind].imshow(data['img'])
+        axeslist.ravel()[ind].set_title(str(round(data['rmse'], 5)))
+        axeslist.ravel()[ind].set_axis_off()
+
+    plt.tight_layout() # optional
+    plt.show()
+
+    # Show differences
     diff_array = []
     fig, axeslist = plt.subplots(ncols=len(model_one_outputs), nrows=3)
     rmse_data = defaultdict(list) 
@@ -130,11 +154,6 @@ def main(args):
 
     plt.tight_layout() # optional
     plt.show()
-
-    for k in enumerate(rmse_data):
-        print(k)
-        # plt.plot(rmse_data[k])
-    # plt.show()
 
     # save_compare_frame(output1, output2, tgt)
     # make_compare_video(args.save_dir)

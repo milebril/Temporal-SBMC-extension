@@ -154,7 +154,6 @@ def denoise(args, input_root="", output_root=""):
     # Load the latest model from a directory
     # Or load the model if it's given directly
     if os.path.isdir(args.checkpoint):
-        print("HEIRHIE")
         checkpointer = ttools.Checkpointer(args.checkpoint, model, None)
         extras, meta = checkpointer.load_latest()
         LOG.info("Loading latest checkpoint {}".format(
@@ -185,9 +184,12 @@ def denoise(args, input_root="", output_root=""):
             last_num = parts[-1]
 
             return int(first_num + last_num)
-
-        scene_names = [d for d in
-                    sorted(os.listdir(args.input), key=myKeyFunc)]
+        try:
+            scene_names = [d for d in
+                        sorted(os.listdir(args.input), key=myKeyFunc)]
+        except:
+            scene_names = [d for d in
+                        sorted(os.listdir(args.input))]
         # print(scene_names)
 
     output_base = args.output

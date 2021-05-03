@@ -42,8 +42,8 @@ def main(args):
 
     dataloader = DataLoader(data, batch_size=1, shuffle=False, num_workers=1)
 
-    LOG.info("Visualizing dataset with %d spp (gt_spp = %d)",
-             data.spp, data.gt_sample_count)
+    # LOG.info("Visualizing dataset with %d spp (gt_spp = %d)",
+    #          data.spp, data.gt_sample_count)
     for idx, sample in enumerate(dataloader):
         if idx >= args.frames: #
             break
@@ -53,7 +53,7 @@ def main(args):
         low_spp = sample["low_spp"]
         # LOG.info("  target radiance: %.2f -- %.2f", im.min().item(), im.max().item())
         _save(args.output, "%04d_reference.png" % idx, ref)
-        # _save(args.output, "%04d_low_spp.png" % idx, low_spp)
+        _save(args.output, "%04d_low_spp.png" % idx, low_spp)
 
         if not args.dump_features:
             continue
