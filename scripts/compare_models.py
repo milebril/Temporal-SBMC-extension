@@ -36,7 +36,6 @@ def main(args):
 
     # Load the two models
     temp = th.load(f"{args.model1}", map_location=th.device('cpu'))
-    # model_one = sbmc.Multisteps(data.num_features, data.num_global_features)
     model_one = sbmc.RecurrentMultisteps(data.num_features, data.num_global_features)
     try: # Depending on the way a model is saved, the statedict is referenced with different keys
         model_one.load_state_dict(temp['model'])

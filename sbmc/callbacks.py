@@ -44,6 +44,7 @@ class TensorboardCallback(KeyedCallback):
         self.log_keys = log_keys
         self.interface = interface
         self.writer = interface.writer
+        self.model = interface.model
         self.trainer = trainer
         self.epoch = 0
 
@@ -55,6 +56,10 @@ class TensorboardCallback(KeyedCallback):
         self.epoch = epoch_idx  
 
     def epoch_end(self):
+        for name, weight in self.model.named_parameters():
+            self.writer.add_histogram(name,weight, self.epoch)
+            self.writer.add_histogram(f'{name}.grad',weight.grad, self.epoch)
+
         self.writer.add_scalar('Loss/train', self.ema["loss"], self.epoch)
         self.writer.add_scalar('RMSE/train', self.ema["rmse"], self.epoch)
     

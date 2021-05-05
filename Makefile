@@ -105,8 +105,8 @@ generate_training_sequence:
 		$(PBRT) \
 		$(OBJ2PBRT) \
 		$(DATA)/demo/scenegen_assets \
-		$(OUTPUT)/emil/training_set_stilstaand \
-		--count 50 --frames 5 --spp 4 --gt_spp 2096 --width 128 --height 128 --threads 1 --no-clean
+		$(OUTPUT)/emil/test_set/upperbound \
+		--count 1 --frames 2 --spp 8 --gt_spp 2096 --width 128 --height 128 --threads 1 --no-clean
 	# find $(OUTPUT)/emil/tmp_set/render_samples_seq/ -type f ! -name '*.bin' -print0 | xargs -0 rm -vf
 	# find $(OUTPUT)/emil/tmp_set/render_samples_seq/ -type d -empty -print0 | xargs -0 rmdir -v
 	@cd $(OUTPUT)/emil/training_set_stilstaand && find . -name "*.bin" | sort -V > filelist.txt
@@ -140,8 +140,8 @@ show_all: visualize_sequence denoise_sequence_pretrained denoise_sequence_peters
 # Ouputs the ground thruth render as well as the low spp render
 visualize_sequence:
 	@python scripts/visualize_dataset.py \
-		$(OUTPUT)/emil/training_set_stilstaand/render_samples_seq   \
-		$(OUTPUT)/emil/training_set_stilstaand --spp 4 --frames 10
+		$(OUTPUT)/emil/test_set/upperbound/render_samples_seq   \
+		$(OUTPUT)/emil/test_set/upperbound --spp 4 --frames 10
 
 # Denoises a given sequence using the pretrained model from Gharbi et al
 denoise_sequence_pretrained:
@@ -164,9 +164,9 @@ denoise_sequence_peters:
 # Trains the recurrent SBMC model
 train_emil:
 	@python scripts/train.py \
-		--checkpoint_dir $(OUTPUT)/emil/training_peters_dropout \
-		--data $(OUTPUT)/emil/training_set/filelist.txt \
-		--val_data $(OUTPUT)/emil/validation_set/filelist.txt \
+		--checkpoint_dir $(OUTPUT)/emil/training_stilstaand_peters_test \
+		--data $(OUTPUT)/emil/training_set_stilstaand/filelist.txt \
+		--val_data $(OUTPUT)/emil/validation_set_stilstaand/filelist.txt \
 		--env sbmc_ours --port 2001 --bs 1 --constant_spp --emil_mode \
 		--spp 4
 
@@ -183,11 +183,11 @@ train_sbmc:
 # Outputs RMSE comparisons and visual comparisons
 compare_models:
 	@python scripts/compare_models.py \
-		--model1 $(OUTPUT)/emil/trained_models/final_v3/peters_scratch/best.pth \
-		--model2 $(OUTPUT)/emil/trained_models/final_v3/sbmc_scratch/best.pth \
+		--model1 $(OUTPUT)/emil/trained_models/final_v3/better_loaded_dropout/best.pth \
+		--model2 $(OUTPUT)/emil/trained_models/final_v3/sbmc_finetuned/best.pth \
 		--save_dir $(OUTPUT)/emil/compare/img \
-		--data $(OUTPUT)/emil/test_set/samples/sanmiguel_cam18_short/ \
-		--amount 5
+		--data $(OUTPUT)/emil/test_set/upperbound/render_samples_seq \
+		--amount 5 --spp 4
 
 render_samples:
 	@python scripts/render_samples.py $(PBRT) \

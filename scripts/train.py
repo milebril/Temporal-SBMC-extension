@@ -35,8 +35,8 @@ LOG = ttools.get_logger(__name__)
 
 def main(args):
     # Fix seed
-    np.random.seed(0)
-    th.manual_seed(0)
+    # np.random.seed(0)
+    # th.manual_seed(0)
 
     # Parameterization of the dataset (shared between train/val)
     data_args = dict(spp=args.spp, mode=sbmc.TilesDataset.KPCN_MODE if
@@ -130,7 +130,7 @@ def main(args):
 
     # Launch the training
     LOG.info("Training started, 'Ctrl+C' to abort.")
-    trainer.train(dataloader, num_epochs=50,
+    trainer.train(dataloader, num_epochs=5,
                 val_dataloader=val_dataloader)
 
 """
